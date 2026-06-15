@@ -20,6 +20,13 @@ export class ContentRepository {
   listFolders(): Folder[] {
     return folders;
   }
+
+  update(id: string, patch: Partial<Story>): Story | undefined {
+    const idx = stories.findIndex((s) => s.id === id);
+    if (idx === -1) return undefined;
+    stories[idx] = { ...stories[idx], ...patch, updatedAt: new Date().toISOString() };
+    return stories[idx];
+  }
 }
 
 export const contentRepository = new ContentRepository();

@@ -33,6 +33,10 @@ export class ContentService {
     return this.repo.findById(id) ?? null;
   }
 
+  update(id: string, input: import("@/lib/types").UpdateStoryInput): Story | null {
+    return this.repo.update(id, input) ?? null;
+  }
+
   folders(): Folder[] {
     return this.repo.listFolders();
   }

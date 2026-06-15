@@ -71,3 +71,31 @@ export interface ListQuery {
   page?: number;
   perPage?: number;
 }
+
+// ----- Component (block) registry -----
+// Drives the block library and the Design tab of the page builder.
+
+export type FieldType = "text" | "textarea" | "number" | "color" | "select" | "boolean";
+
+export interface FieldDef {
+  key: string;
+  label: string;
+  type: FieldType;
+  options?: string[];
+  default?: unknown;
+}
+
+export interface ComponentDef {
+  name: string; // matches BlockNode.component
+  label: string;
+  icon: string; // lucide icon name
+  category: "layout" | "content" | "media" | "action" | "commerce";
+  fields: FieldDef[];
+  allowChildren?: boolean;
+}
+
+export interface UpdateStoryInput {
+  name?: string;
+  status?: ContentStatus;
+  content?: BlockNode;
+}

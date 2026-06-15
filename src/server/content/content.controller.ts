@@ -48,6 +48,22 @@ export class ContentController {
     if (!story) return { status: 404, body: { error: "Story not found", id } };
     return { status: 200, body: story };
   }
+
+  // PUT /api/content/:id
+  update(id: string, body: unknown): ApiResult {
+    if (!body || typeof body !== "object") {
+      return { status: 400, body: { error: "Invalid body" } };
+    }
+    const { name, status, content } = body as Record<string, unknown>;
+    const patch: import("@/lib/types").UpdateStoryInput = {};
+    if (typeof name === "string") patch.name = name;
+    if (STATUSES.includes(status as ContentStatus)) patch.status = status as ContentStatus;
+    if (content && typeof content === "object") patch.content = content as never;
+
+    const updated = this.service.update(id, patch);
+    if (!updated) return { status: 404, body: { error: "Story not found", id } };
+    return { status: 200, body: updated };
+  }
 }
 
 function numberParam(v: string | null): number | undefined {
