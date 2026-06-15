@@ -9,7 +9,7 @@ export interface Column<T> {
 }
 
 // Generic, lightweight table — the primary data surface across modules (DRY).
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T>({
   columns,
   rows,
   onRowClick,
@@ -69,7 +69,7 @@ export function DataTable<T extends Record<string, unknown>>({
                     c.className,
                   )}
                 >
-                  {c.render ? c.render(row) : String(row[c.key] ?? "")}
+                  {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "")}
                 </td>
               ))}
             </tr>
