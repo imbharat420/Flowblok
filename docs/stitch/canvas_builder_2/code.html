@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Canvas Builder | Flowblok OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .dotted-grid {
+            background-image: radial-gradient(circle, #d8d8d8 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        .hairline-border {
+            border: 1px solid #d8d8d8;
+        }
+        .selection-dashed {
+            outline: 2px dashed #3b89ff;
+            outline-offset: -2px;
+        }
+        /* Custom scrollbar for high-density panels */
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #d8d8d8;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "accent-blue-info": "#146ef5",
+                        "surface-container-low": "#f7f3f2",
+                        "body-mid": "#5a5a5a",
+                        "on-tertiary-fixed-variant": "#494645",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-primary-container": "#858383",
+                        "accent-pink": "#ed52cb",
+                        "outline": "#747878",
+                        "surface": "#fdf8f8",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary": "#5d5f5f",
+                        "tertiary-fixed": "#e7e1df",
+                        "secondary-fixed": "#e2e2e2",
+                        "secondary-container": "#dfe0e0",
+                        "mute-soft": "#ababab",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c4c7c7",
+                        "on-secondary": "#ffffff",
+                        "body": "#363636",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "accent-blue-deep": "#006acc",
+                        "surface-container": "#f1edec",
+                        "on-background": "#1c1b1b",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary": "#000000",
+                        "primary-container": "#1c1b1b",
+                        "tertiary-fixed-dim": "#cac5c3",
+                        "on-surface": "#1c1b1b",
+                        "inverse-primary": "#c9c6c5",
+                        "on-tertiary-fixed": "#1d1b1a",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "mute": "#898989",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "primary": "#000000",
+                        "ink-strong": "#222222",
+                        "inverse-surface": "#313030",
+                        "surface-container-highest": "#e5e2e1",
+                        "on-surface-variant": "#444748",
+                        "accent-red": "#ee1d36",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#1d1b1a",
+                        "hairline": "#d8d8d8",
+                        "on-tertiary-container": "#878381",
+                        "surface-tint": "#5f5e5e",
+                        "primary-fixed-dim": "#c9c6c5",
+                        "accent-blue": "#3b89ff",
+                        "inverse-on-surface": "#f4f0ef",
+                        "surface-bright": "#fdf8f8",
+                        "canvas": "#ffffff",
+                        "accent-orange": "#ff6b00",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#ebe7e6",
+                        "background": "#fdf8f8",
+                        "on-secondary-container": "#616363",
+                        "accent-purple": "#7a3dff",
+                        "accent-green": "#00d722",
+                        "accent-yellow": "#ffae13",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#ddd9d8",
+                        "primary-fixed": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "20px",
+                        "gutter": "32px",
+                        "3xl": "32px",
+                        "xxs": "2px",
+                        "lg": "16px",
+                        "2xl": "24px",
+                        "xs": "4px",
+                        "md": "12px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "caption-mono": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-sm": ["Inter"],
+                        "display-xs": ["Inter"],
+                        "caption": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-canvas text-ink-strong font-body-md overflow-hidden">
+<!-- TopNavBar: Authority Source JSON -->
+<header class="fixed top-0 w-full z-50 border-b border-hairline bg-canvas flex justify-between items-center px-gutter h-16 w-full">
+<div class="flex items-center gap-2xl">
+<span class="font-display-xs text-display-xs font-semibold text-ink-strong tracking-tight">Flowblok OS</span>
+<nav class="hidden md:flex gap-xl">
+<a class="font-body-sm text-body-sm font-medium text-body-mid hover:text-ink-strong transition-colors duration-200" href="#">Docs</a>
+<a class="font-body-sm text-body-sm font-medium text-body-mid hover:text-ink-strong transition-colors duration-200" href="#">Community</a>
+<a class="font-body-sm text-body-sm font-medium text-body-mid hover:text-ink-strong transition-colors duration-200" href="#">Help</a>
+</nav>
+</div>
+<div class="flex items-center gap-lg">
+<button class="font-body-sm text-body-sm font-medium bg-canvas border border-hairline px-xl py-xs rounded hover:bg-surface-container transition-all">Preview</button>
+<button class="font-body-sm text-body-sm font-medium bg-primary text-on-primary px-xl py-xs rounded hover:opacity-80 transition-opacity">Deploy</button>
+<div class="flex gap-sm ml-xl border-l border-hairline pl-xl">
+<span class="material-symbols-outlined text-body-mid cursor-pointer hover:text-ink-strong">notifications</span>
+<span class="material-symbols-outlined text-body-mid cursor-pointer hover:text-ink-strong">account_circle</span>
+</div>
+</div>
+</header>
+<!-- SideNavBar: Left Navigation Shell -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-16 border-r border-hairline bg-canvas flex flex-col py-lg space-y-xs items-center z-40">
+<div class="p-xs flex flex-col gap-sm">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-surface-container-low text-ink-strong font-semibold border-r-2 border-ink-strong">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all">
+<span class="material-symbols-outlined">near_me</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all">
+<span class="material-symbols-outlined">text_fields</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all">
+<span class="material-symbols-outlined">image</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all">
+<span class="material-symbols-outlined">layers</span>
+</button>
+</div>
+<div class="mt-auto flex flex-col gap-sm pb-lg">
+<span class="material-symbols-outlined text-body-mid cursor-pointer hover:text-ink-strong">help_outline</span>
+<span class="material-symbols-outlined text-body-mid cursor-pointer hover:text-ink-strong">settings</span>
+</div>
+</aside>
+<!-- Main Canvas Area -->
+<main class="fixed inset-0 top-16 left-16 right-64 bg-surface-container-low dotted-grid overflow-auto custom-scroll p-gutter flex items-center justify-center">
+<!-- Center Canvas: Hero Mockup -->
+<div class="w-full max-w-4xl bg-canvas shadow-xl rounded-lg overflow-hidden selection-dashed relative group">
+<!-- Label for selection -->
+<div class="absolute -top-7 left-0 bg-accent-blue text-white font-caption text-caption px-sm py-xxs rounded-t flex items-center gap-xs">
+<span>Hero Section</span>
+<span class="material-symbols-outlined text-[12px]">close</span>
+</div>
+<section class="p-3xl py-24 text-center">
+<div class="max-w-2xl mx-auto space-y-xl">
+<span class="font-caption text-caption bg-accent-blue-info/10 text-accent-blue-info px-md py-xxs rounded-full border border-accent-blue-info/20">Alpha V2.0</span>
+<h1 class="font-display-xl text-display-xl tracking-tight text-ink-strong">Engineer visual excellence with Flowblok OS</h1>
+<p class="font-body-md text-body-md text-body-mid">The professional visual development platform for precision creators. Build once, deploy everywhere with zero friction.</p>
+<div class="flex items-center justify-center gap-lg pt-xl">
+<button class="bg-ink-strong text-canvas px-2xl py-md rounded font-body-sm font-medium">Start Designing</button>
+<button class="border border-hairline px-2xl py-md rounded font-body-sm font-medium hover:bg-surface-container">View Examples</button>
+</div>
+</div>
+<!-- Floating mockup visuals -->
+<div class="mt-2xl pt-2xl border-t border-hairline grid grid-cols-3 gap-xl">
+<div class="bg-surface-container aspect-video rounded flex items-center justify-center">
+<img class="w-full h-full object-cover rounded opacity-80" data-alt="A macro shot of sleek, brushed aluminum professional studio hardware featuring minimalist knobs and LED indicators. The lighting is cold and precise, echoing a high-tech engineering environment with deep shadows and clean highlights. The overall aesthetic is professional, modern, and high-contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhgOjiU5TjImnsTJf88Nm041R6wI_JM2d31mrQySYneGsUwb-wNGnhMYk2J4pZAbsyEHXmIAR39OrAm7FQVWEbu2-bNwd8lpDAponsFKEFDDJjSkGBVmA_AWqKX_YG_ZqhWDoQyH8oZsLU5VWCtSQieyu93jPKOdalBTyubj1n3vU8vqKSMfIF_vaNYhYAxk-QiEEne-r2OgFIgyRDdlOyQSCoomzBs6VeMzALpKjoRO_8M_PydN2ETrQyfrnnoOMN0OF9vFg2Xks"/>
+</div>
+<div class="bg-surface-container aspect-video rounded flex items-center justify-center">
+<img class="w-full h-full object-cover rounded opacity-80" data-alt="A clean top-down view of a designer's desk with a high-end mechanical keyboard and a precision mouse on a gray felt desk mat. The environment is flooded with soft, natural morning light, creating a serene and focused mood. The color palette is dominated by whites, grays, and subtle black accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJrF8bBGIZHz7TldQEoPvugXgE0j1bSE3-SJmg8oVaucJA0mRKvWtVkqbUDlu9UCNvjtcMXn04dFV25Apo4gZ5zP7DVdd0QuEJUyxUa69bniuqsWalpFm8YnIhedjJ8HVaXmD7FuyJ8KntaaAxmH6rtIIRzO8V3x1vBTF6LxiqIwg-ZD2GG0eQaAFpOkoGOCGU3PSz4k8AK4EEaIBGe8sSgrrln5tn_s0xluhELxSZulLkb-jUe5AVTdcWJiXnL1YJYYW0_heNqYs"/>
+</div>
+<div class="bg-surface-container aspect-video rounded flex items-center justify-center">
+<img class="w-full h-full object-cover rounded opacity-80" data-alt="Abstract digital network visualization with flowing blue and purple light particles against a deep black background. The connections are crisp and intricate, representing high-speed data flow and professional cloud infrastructure. The mood is sophisticated, cinematic, and technically advanced." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhVeEeh6uhFmVFZYn4hJ090mTKrk69AKB-GtTLFAlml835B2nEciFY8vmmFY7xpqM3YFp5WgVEGm_MDdrUZ4sSd304p2HKw0Zh8a3iGWebZMZyMt6pVyWB8HaQaXaY1dVxESR0xpWNlaHlsLFOyD9zXyFnZEWoFVXRXYMFLTa-K3i-leRKT6H3mKCtDQ3-Pm8augx0JAPlT96yBofYSoiUu0cutFssYh5upN9FcLWWviFPdB42A7stLD82RDPZsfoNE7BCkOD5cHM"/>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Right Properties Panel -->
+<aside class="fixed right-0 top-16 h-[calc(100vh-64px)] w-64 border-l border-hairline bg-canvas flex flex-col overflow-y-auto custom-scroll z-40">
+<!-- Layout Section -->
+<div class="p-lg border-b border-hairline">
+<div class="flex items-center justify-between mb-md">
+<span class="font-body-sm text-body-sm font-semibold uppercase tracking-wider text-body-mid">Layout</span>
+<span class="material-symbols-outlined text-[18px] text-body-mid">expand_more</span>
+</div>
+<div class="grid grid-cols-2 gap-sm">
+<div class="space-y-xs">
+<label class="font-caption text-caption text-body-mid">Display</label>
+<div class="flex border border-hairline rounded overflow-hidden">
+<button class="flex-1 p-xs bg-surface-container flex justify-center"><span class="material-symbols-outlined text-[16px]">grid_view</span></button>
+<button class="flex-1 p-xs flex justify-center border-l border-hairline"><span class="material-symbols-outlined text-[16px]">view_agenda</span></button>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-caption text-caption text-body-mid">Position</label>
+<select class="w-full h-8 px-xs border border-hairline rounded font-body-sm text-body-sm bg-canvas focus:ring-1 focus:ring-accent-blue outline-none">
+<option>Relative</option>
+<option>Absolute</option>
+<option>Fixed</option>
+</select>
+</div>
+</div>
+<div class="mt-md space-y-xs">
+<label class="font-caption text-caption text-body-mid">Padding &amp; Margin</label>
+<div class="grid grid-cols-4 gap-xs">
+<input class="w-full h-8 border border-hairline rounded font-caption-mono text-caption-mono text-center focus:border-accent-blue outline-none" type="text" value="32px"/>
+<input class="w-full h-8 border border-hairline rounded font-caption-mono text-caption-mono text-center focus:border-accent-blue outline-none" type="text" value="32px"/>
+<input class="w-full h-8 border border-hairline rounded font-caption-mono text-caption-mono text-center focus:border-accent-blue outline-none" type="text" value="32px"/>
+<input class="w-full h-8 border border-hairline rounded font-caption-mono text-caption-mono text-center focus:border-accent-blue outline-none" type="text" value="32px"/>
+</div>
+</div>
+</div>
+<!-- Typography Section -->
+<div class="p-lg border-b border-hairline">
+<div class="flex items-center justify-between mb-md">
+<span class="font-body-sm text-body-sm font-semibold uppercase tracking-wider text-body-mid">Typography</span>
+<span class="material-symbols-outlined text-[18px] text-body-mid">expand_more</span>
+</div>
+<div class="space-y-md">
+<div class="space-y-xs">
+<label class="font-caption text-caption text-body-mid">Font Family</label>
+<select class="w-full h-8 px-xs border border-hairline rounded font-body-sm text-body-sm bg-canvas focus:ring-1 focus:ring-accent-blue outline-none">
+<option>Inter</option>
+<option>JetBrains Mono</option>
+<option>Georgia</option>
+</select>
+</div>
+<div class="grid grid-cols-2 gap-sm">
+<div class="space-y-xs">
+<label class="font-caption text-caption text-body-mid">Weight</label>
+<select class="w-full h-8 px-xs border border-hairline rounded font-body-sm text-body-sm bg-canvas">
+<option>Regular</option>
+<option selected="">Medium</option>
+<option>Semibold</option>
+</select>
+</div>
+<div class="space-y-xs">
+<label class="font-caption text-caption text-body-mid">Size</label>
+<div class="flex border border-hairline rounded overflow-hidden">
+<input class="w-full h-8 px-xs font-caption-mono text-caption-mono text-center outline-none" type="text" value="56"/>
+<div class="px-xs flex items-center bg-surface-container border-l border-hairline text-caption font-caption text-mute-soft">px</div>
+</div>
+</div>
+</div>
+<div class="flex gap-xs">
+<button class="flex-1 h-8 border border-hairline rounded flex items-center justify-center hover:bg-surface-container"><span class="material-symbols-outlined text-[18px]">format_align_left</span></button>
+<button class="flex-1 h-8 border border-hairline rounded flex items-center justify-center bg-surface-container"><span class="material-symbols-outlined text-[18px]">format_align_center</span></button>
+<button class="flex-1 h-8 border border-hairline rounded flex items-center justify-center hover:bg-surface-container"><span class="material-symbols-outlined text-[18px]">format_align_right</span></button>
+</div>
+</div>
+</div>
+<!-- Colors Section -->
+<div class="p-lg">
+<div class="flex items-center justify-between mb-md">
+<span class="font-body-sm text-body-sm font-semibold uppercase tracking-wider text-body-mid">Colors</span>
+<span class="material-symbols-outlined text-[18px] text-body-mid">expand_more</span>
+</div>
+<div class="space-y-md">
+<div class="flex items-center justify-between p-xs border border-hairline rounded">
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-sm bg-ink-strong border border-hairline"></div>
+<span class="font-caption-mono text-caption-mono text-body-mid">#222222</span>
+</div>
+<span class="font-caption text-caption text-mute-soft">100%</span>
+</div>
+<div class="flex items-center justify-between p-xs border border-hairline rounded">
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-sm bg-accent-blue border border-hairline"></div>
+<span class="font-caption-mono text-caption-mono text-body-mid">#3B89FF</span>
+</div>
+<span class="font-caption text-caption text-mute-soft">80%</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Bottom Command Bar -->
+<div class="fixed bottom-gutter left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-gutter">
+<div class="glass-pill h-12 rounded-full flex items-center px-lg shadow-lg">
+<span class="material-symbols-outlined text-body-mid mr-sm">search</span>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-body-sm placeholder:text-mute-soft" placeholder="Add component (⌘ K)" type="text"/>
+<div class="flex items-center gap-xs ml-sm">
+<kbd class="px-xs py-[2px] bg-surface-container-high border border-hairline rounded text-[10px] text-body-mid font-caption-mono">ESC</kbd>
+</div>
+</div>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    input.parentElement.classList.add('border-accent-blue');
+                });
+                input.addEventListener('blur', () => {
+                    input.parentElement.classList.remove('border-accent-blue');
+                });
+            });
+
+            // Keyboard shortcut simulation
+            document.addEventListener('keydown', (e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                    e.preventDefault();
+                    document.querySelector('input[placeholder*="Add component"]').focus();
+                }
+            });
+        });
+    </script>
+</body></html>

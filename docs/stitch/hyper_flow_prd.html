@@ -1,0 +1,223 @@
+# Hyper-Flow
+
+## Product Overview
+
+**The Pitch:** DXOS merges UI design, database management, and automation into a unified node-based operating system. Build digital experiences where logic and layout exist on the same infinite canvas.
+
+**For:** Visual developers and technical designers who want complete control over front-end components and back-end data flows without switching contexts.
+
+**Device:** desktop
+
+**Design Direction:** High-contrast cyberpunk utilitarian. Obsidian backgrounds, sharp geometry, technical monospaced UI details, and vibrant neon gradients tracing real-time data flow. 
+
+**Inspired by:** Unreal Engine Blueprints, TouchDesigner
+
+---
+
+## Screens
+
+- **Workspace Hub:** Grid-based launchpad for active digital experiences and global telemetry.
+- **Unified Canvas:** The core editor where UI blocks, logic nodes, and database tables coexist.
+- **Block Library:** Floating, interactive panel containing raw UI components and logic operators.
+- **Live Path Analyzer:** Dedicated debugging view highlighting active data streams and execution bottlenecks.
+- **Node Inspector:** Contextual sidebar for deep-editing properties of selected blocks or nodes.
+
+---
+
+## Key Flows
+
+**Binding a UI Component to a Database:** Connect a front-end button to a back-end logic sequence.
+
+1. User is on **Unified Canvas** -> sees the `[Submit Button]` UI block and `[User DB]` node.
+2. User clicks and drags `Data Out` port on `[Submit Button]` -> drops onto `Write Entry` port of `[User DB]` node.
+3. System generates a glowing spline connection; a test packet pulses along the path confirming data type compatibility.
+
+---
+
+<details>
+<summary>Design System</summary>
+
+## Color Palette
+
+- **Primary:** `#FF2A6D` - Core interactive elements, active states, data pulses
+- **Background:** `#050507` - Deep space canvas, page background
+- **Surface:** `#111116` - Node bodies, panels, floating menus
+- **Text:** `#E0E0E5` - High-legibility body text
+- **Muted:** `#4A4A59` - Grid lines, inactive ports, borders
+- **Accent 1:** `#05D9E8` - Logic nodes, boolean connections
+- **Accent 2:** `#01FFE5` - Database nodes, array connections
+
+## Typography
+
+- **Headings:** `Space Grotesk`, 700, 24-32px
+- **Body:** `Outfit`, 400, 14px
+- **Code/Ports:** `JetBrains Mono`, 500, 11px
+- **Buttons:** `Space Grotesk`, 600, 14px
+
+**Style notes:** 0px border radius for brutalist geometry. 1px solid borders (`#4A4A59`) on all surfaces. Inner shadows to create depth inside ports. Data connections use animated CSS gradients masking an SVG stroke.
+
+## Design Tokens
+
+```css
+:root {
+  --color-primary: #FF2A6D;
+  --color-background: #050507;
+  --color-surface: #111116;
+  --color-text: #E0E0E5;
+  --color-muted: #4A4A59;
+  --color-accent-logic: #05D9E8;
+  --color-accent-data: #01FFE5;
+  
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --radius-none: 0px;
+  --border-thin: 1px solid #4A4A59;
+  --shadow-neon: 0 0 10px rgba(255, 42, 109, 0.4);
+}
+```
+
+</details>
+
+---
+
+<details>
+<summary>Screen Specifications</summary>
+
+### Workspace Hub
+
+**Purpose:** Entry point to manage experiences and view high-level project telemetry.
+
+**Layout:** 240px left navigation sidebar, remaining area a rigid 4-column CSS grid.
+
+**Key Elements:**
+- **Project Cards:** 320x240px blocks, `#111116` surface, `1px solid #4A4A59`. Displays project name and sparkline of current active users.
+- **Global Metric Banner:** 120px height, spans full width above project grid. Displays total processed events in `Space Grotesk`, 700, `48px`, `#FF2A6D`.
+- **Create New Node:** Outlined card with glowing `+` icon on hover.
+
+**States:**
+- **Empty:** "No Experiences Found. Initialize Canvas." prompt centered in grid.
+- **Loading:** Ghost cards with sweeping gradient skeleton animation.
+- **Error:** Red border outline, `14px` mono text: `ERR: CONNECTION_TIMEOUT`.
+
+**Components:**
+- **Metric Block:** 200x120px, `#111116` background, `#05D9E8` metrics.
+- **Primary CTA:** 160x40px, `#FF2A6D` background, sharp edges, `Create Experience`.
+
+**Interactions:**
+- **Hover Project Card:** Border shifts to `#FF2A6D`, background brightens to `#1A1A24`.
+- **Click Create:** Instantly routes to Unified Canvas with a 200ms scale-out animation.
+
+### Unified Canvas
+
+**Purpose:** Infinite workspace connecting UI design, database models, and logic.
+
+**Layout:** Full-viewport absolute positioning. 60px top control bar, 300px right collapsible Inspector.
+
+**Key Elements:**
+- **Infinite Grid:** Background `#050507`, grid lines `#4A4A59` at `20px` intervals.
+- **UI Node Block:** 280px width, contains rendered UI component (e.g., login form) with input/output data ports on left/right edges.
+- **Connection Spline:** SVG `<path>`, `3px` stroke, animated marching ants effect to indicate data flow direction.
+
+**States:**
+- **Empty:** Bare grid. Floating pill at bottom: "Drag blocks from Library (Spacebar)".
+- **Loading (Runtime):** Live paths glow intensely; moving particles sync with data throughput rate.
+- **Error:** Broken connection splines turn `#FF0000`, zig-zag rendering.
+
+**Components:**
+- **Data Port:** `12px` circle, `#05D9E8` fill, `JetBrains Mono` label beside it.
+- **Minimap:** 150x150px absolute positioned bottom-left, semi-transparent `#111116` overview of canvas.
+
+**Interactions:**
+- **Click & Drag Port:** Spawns spline curve following cursor.
+- **Spacebar:** Toggles interactive Block Library modal at cursor position.
+- **Scroll:** Zoom canvas (`transform: scale()`). Middle-click drag to pan.
+
+### Block Library
+
+**Purpose:** Quick-access palette for adding nodes to the canvas.
+
+**Layout:** 400x500px floating modal, triggers at cursor coordinate. 2-column internal grid.
+
+**Key Elements:**
+- **Search Bar:** 48px height, `1px` bottom border `#4A4A59`. Autofocuses on open.
+- **Category Tabs:** `UI`, `Logic`, `Data`, `Integrations`. `12px` monospaced labels.
+- **Draggable Items:** 180x60px chips. Left edge colored by category (`#FF2A6D` for UI, `#05D9E8` for Logic).
+
+**States:**
+- **Empty (Search):** "No blocks match query." in `#4A4A59`.
+- **Loading:** Instant render (client-side data).
+- **Error:** N/A.
+
+**Components:**
+- **Item Chip:** `#111116` background, icon + text. Hover elevates via drop shadow.
+
+**Interactions:**
+- **Drag Item:** Removes modal, item attaches to cursor until dropped on canvas.
+- **Escape:** Dismisses modal.
+
+### Live Path Analyzer
+
+**Purpose:** Detailed telemetry and debugging for active data flows.
+
+**Layout:** Split screen. Top 60% shows a read-only, high-contrast version of the canvas. Bottom 40% is a tabular data log.
+
+**Key Elements:**
+- **Live Stream Splines:** Thicker `5px` splines. High-speed particle animations. Colors map to data types (Strings = pink, Booleans = cyan).
+- **Data Log Terminal:** `#000000` background. Streams incoming/outgoing JSON payloads.
+- **Pause Execution Button:** 40px square, `border: 1px solid #FF2A6D`, pulsing red dot icon.
+
+**States:**
+- **Empty:** "Awaiting Execution Triggers."
+- **Loading:** "Establishing WebSocket Connection..."
+- **Error:** Disconnected state, greyed out canvas.
+
+**Components:**
+- **Log Row:** 24px height, `11px` monospace font. Alternate row backgrounds `#0A0A0C`.
+
+**Interactions:**
+- **Hover Spline:** Pauses particles on that spline, shows tooltip with instantaneous payload size.
+- **Click Log Row:** Highlights corresponding node on the top canvas in `#01FFE5`.
+
+### Node Inspector
+
+**Purpose:** Granular configuration of selected nodes.
+
+**Layout:** 300px fixed width sidebar docked to right. Vertical stack of accordions.
+
+**Key Elements:**
+- **Node Header:** 64px height. Node name, icon, and ID hash (e.g., `nd_8F2a9`).
+- **Property Inputs:** `32px` height text inputs. `#050507` background, inset shadows.
+- **Raw JSON Editor:** Embedded Monaco editor block for advanced prop overriding.
+
+**States:**
+- **Empty:** "Select a node to inspect properties."
+- **Loading:** N/A (synchronous).
+- **Error:** Invalid input flags red border and shake animation.
+
+**Components:**
+- **Toggle Switch:** Sharp rectangular switch, active state fills `#FF2A6D`.
+- **Code Block:** 200px height, `JetBrains Mono` font, syntax highlighting.
+
+**Interactions:**
+- **Change Value:** Instantly updates paired node on canvas.
+- **Focus Input:** Border shifts to `#01FFE5`.
+
+</details>
+
+---
+
+<details>
+<summary>Build Guide</summary>
+
+**Stack:** React + Tailwind CSS v3 + React Flow (Canvas) + Framer Motion (Animations)
+
+**Build Order:**
+1. **Unified Canvas** - Establishes the core grid, panning, zooming, and node rendering logic. Defines the aesthetic baseline.
+2. **Block Library** - Enables population of the canvas. Implements drag-and-drop state mechanics.
+3. **Node Inspector** - Allows state mutation of the dropped blocks.
+4. **Live Path Analyzer** - Adds WebSocket data layer and complex SVG animation paths.
+5. **Workspace Hub** - Wraps the experience in a management layer.
+
+</details>

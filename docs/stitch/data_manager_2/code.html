@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Data Manager | Flowblok OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "accent-blue-info": "#146ef5",
+                      "surface-container-low": "#f7f3f2",
+                      "body-mid": "#5a5a5a",
+                      "on-tertiary-fixed-variant": "#494645",
+                      "on-secondary-fixed-variant": "#454747",
+                      "on-primary-container": "#858383",
+                      "accent-pink": "#ed52cb",
+                      "outline": "#747878",
+                      "surface": "#fdf8f8",
+                      "on-primary-fixed": "#1c1b1b",
+                      "secondary": "#5d5f5f",
+                      "tertiary-fixed": "#e7e1df",
+                      "secondary-fixed": "#e2e2e2",
+                      "secondary-container": "#dfe0e0",
+                      "mute-soft": "#ababab",
+                      "on-tertiary": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#c4c7c7",
+                      "on-secondary": "#ffffff",
+                      "body": "#363636",
+                      "on-error": "#ffffff",
+                      "surface-variant": "#e5e2e1",
+                      "accent-blue-deep": "#006acc",
+                      "surface-container": "#f1edec",
+                      "on-background": "#1c1b1b",
+                      "on-primary-fixed-variant": "#474646",
+                      "tertiary": "#000000",
+                      "primary-container": "#1c1b1b",
+                      "tertiary-fixed-dim": "#cac5c3",
+                      "on-surface": "#1c1b1b",
+                      "inverse-primary": "#c9c6c5",
+                      "on-tertiary-fixed": "#1d1b1a",
+                      "on-secondary-fixed": "#1a1c1c",
+                      "mute": "#898989",
+                      "secondary-fixed-dim": "#c6c6c7",
+                      "primary": "#000000",
+                      "ink-strong": "#222222",
+                      "inverse-surface": "#313030",
+                      "surface-container-highest": "#e5e2e1",
+                      "on-surface-variant": "#444748",
+                      "accent-red": "#ee1d36",
+                      "error": "#ba1a1a",
+                      "tertiary-container": "#1d1b1a",
+                      "hairline": "#d8d8d8",
+                      "on-tertiary-container": "#878381",
+                      "surface-tint": "#5f5e5e",
+                      "primary-fixed-dim": "#c9c6c5",
+                      "accent-blue": "#3b89ff",
+                      "inverse-on-surface": "#f4f0ef",
+                      "surface-bright": "#fdf8f8",
+                      "canvas": "#ffffff",
+                      "accent-orange": "#ff6b00",
+                      "on-error-container": "#93000a",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#ebe7e6",
+                      "background": "#fdf8f8",
+                      "on-secondary-container": "#616363",
+                      "accent-purple": "#7a3dff",
+                      "accent-green": "#00d722",
+                      "accent-yellow": "#ffae13",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-dim": "#ddd9d8",
+                      "primary-fixed": "#e5e2e1"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "xl": "20px",
+                      "gutter": "32px",
+                      "3xl": "32px",
+                      "xxs": "2px",
+                      "lg": "16px",
+                      "2xl": "24px",
+                      "xs": "4px",
+                      "md": "12px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "caption-mono": ["JetBrains Mono"],
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-sm": ["Inter"],
+                      "eyebrow-uppercase": ["Inter"],
+                      "display-xs": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-md": ["Inter"],
+                      "display-xxl": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "display-xl": ["Inter"],
+                      "caption": ["Inter"]
+              },
+              "fontSize": {
+                      "caption-mono": ["12px", {"lineHeight": "18px", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "22.4px", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "25.6px", "letterSpacing": "-0.16px", "fontWeight": "400"}],
+                      "display-sm": ["24px", {"lineHeight": "31.2px", "letterSpacing": "0", "fontWeight": "500"}],
+                      "eyebrow-uppercase": ["15px", {"lineHeight": "19.5px", "letterSpacing": "1.5px", "fontWeight": "500"}],
+                      "display-xs": ["20px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "500"}],
+                      "body-lg": ["28.8px", {"lineHeight": "46.08px", "letterSpacing": "-0.288px", "fontWeight": "400"}],
+                      "display-md": ["32px", {"lineHeight": "41.6px", "letterSpacing": "0", "fontWeight": "500"}],
+                      "display-xxl": ["80px", {"lineHeight": "83.2px", "letterSpacing": "-0.8px", "fontWeight": "600"}],
+                      "display-lg": ["44.8px", {"lineHeight": "46.6px", "letterSpacing": "0", "fontWeight": "600"}],
+                      "display-xl": ["56px", {"lineHeight": "58.24px", "letterSpacing": "0", "fontWeight": "600"}],
+                      "caption": ["12.8px", {"lineHeight": "15.36px", "letterSpacing": "0", "fontWeight": "550"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            font-size: 20px;
+        }
+        .data-table-container::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .data-table-container::-webkit-scrollbar-thumb {
+            background: #d8d8d8;
+            border-radius: 10px;
+        }
+        .data-table-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-active {
+            background-color: #f7f3f2;
+            color: #222222;
+            font-weight: 600;
+            border-right: 2px solid #222222;
+        }
+    </style>
+</head>
+<body class="bg-canvas text-body font-body-md overflow-hidden h-screen flex flex-col">
+<!-- Top Navigation (Shared Component) -->
+<header class="fixed top-0 w-full z-50 bg-canvas border-b border-hairline flex justify-between items-center px-gutter h-16 w-full">
+<div class="flex items-center gap-xl">
+<span class="font-display-xs text-display-xs font-semibold text-ink-strong tracking-tight">Flowblok OS</span>
+<nav class="hidden md:flex space-x-lg font-body-sm text-body-sm font-medium">
+<a class="text-body-mid hover:text-ink-strong transition-colors duration-200" href="#">Docs</a>
+<a class="text-body-mid hover:text-ink-strong transition-colors duration-200" href="#">Community</a>
+<a class="text-body-mid hover:text-ink-strong transition-colors duration-200" href="#">Help</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<button class="bg-canvas border border-hairline px-lg py-xs text-body-sm font-medium hover:bg-surface-container-low transition-all">Preview</button>
+<button class="bg-primary text-on-primary px-lg py-xs text-body-sm font-medium hover:opacity-80 transition-all">Deploy</button>
+<div class="flex items-center gap-sm ml-sm text-body-mid">
+<span class="material-symbols-outlined cursor-pointer hover:text-ink-strong">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-ink-strong">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Sidebar & Content Wrapper -->
+<div class="flex flex-1 pt-16 overflow-hidden">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-canvas border-r border-hairline flex flex-col py-lg space-y-xs">
+<div class="px-lg pb-md">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-8 h-8 rounded bg-ink-strong flex items-center justify-center text-white font-bold text-xs">PA</div>
+<div class="flex flex-col">
+<span class="font-body-sm font-semibold text-ink-strong">Project Alpha</span>
+<span class="font-caption text-body-mid">Production</span>
+</div>
+</div>
+<button class="w-full mt-lg bg-surface-container-high text-ink-strong py-xs px-sm text-body-sm font-medium flex items-center justify-center gap-xs hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">add</span> New Page
+                </button>
+</div>
+<div class="flex-1 overflow-y-auto space-y-xxs">
+<a class="flex items-center gap-md px-lg py-md text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md sidebar-active" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-body-sm">Content</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-body-sm">Assets</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all" href="#">
+<span class="material-symbols-outlined">api</span>
+<span class="font-body-sm">APIs</span>
+</a>
+<a class="flex items-center gap-md px-lg py-md text-body-mid hover:bg-surface-container-lowest hover:text-ink-strong transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-sm">Settings</span>
+</a>
+</div>
+<div class="border-t border-hairline py-md">
+<a class="flex items-center gap-md px-lg py-sm text-body-mid hover:text-ink-strong transition-all" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-body-sm">Support</span>
+</a>
+<a class="flex items-center gap-md px-lg py-sm text-body-mid hover:text-ink-strong transition-all" href="#">
+<span class="material-symbols-outlined">chat_bubble_outline</span>
+<span class="font-body-sm">Feedback</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 flex flex-col bg-background">
+<!-- Secondary Sidebar: Content Tree -->
+<div class="flex flex-1 overflow-hidden">
+<div class="w-64 border-r border-hairline bg-surface flex flex-col shrink-0">
+<div class="p-lg">
+<span class="font-caption-mono text-caption-mono text-mute uppercase tracking-widest block mb-md">Collection Types</span>
+<ul class="space-y-xxs">
+<li>
+<button class="w-full text-left px-sm py-xs rounded hover:bg-surface-container-low flex items-center gap-xs font-body-sm text-body-mid">
+<span class="material-symbols-outlined text-[18px]">list</span> All Pages
+                                </button>
+</li>
+<li>
+<button class="w-full text-left px-sm py-xs rounded bg-surface-container-high flex items-center gap-xs font-body-sm text-ink-strong font-medium">
+<span class="material-symbols-outlined text-[18px]">group</span> Users
+                                </button>
+</li>
+<li>
+<button class="w-full text-left px-sm py-xs rounded hover:bg-surface-container-low flex items-center gap-xs font-body-sm text-body-mid">
+<span class="material-symbols-outlined text-[18px]">article</span> Blog Posts
+                                </button>
+</li>
+<li>
+<button class="w-full text-left px-sm py-xs rounded hover:bg-surface-container-low flex items-center gap-xs font-body-sm text-body-mid">
+<span class="material-symbols-outlined text-[18px]">inventory_2</span> Products
+                                </button>
+</li>
+</ul>
+</div>
+</div>
+<!-- Data Workspace -->
+<div class="flex-1 flex flex-col overflow-hidden relative">
+<!-- View Header -->
+<div class="px-gutter py-2xl border-b border-hairline bg-canvas shrink-0">
+<nav aria-label="Breadcrumb" class="flex items-center text-caption text-mute mb-md">
+<span class="hover:text-ink-strong cursor-pointer transition-colors">Home</span>
+<span class="mx-xs material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="hover:text-ink-strong cursor-pointer transition-colors">Collections</span>
+<span class="mx-xs material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-ink-strong font-medium">Users</span>
+</nav>
+<div class="flex justify-between items-center">
+<h1 class="font-display-md text-display-md font-semibold text-ink-strong">Users</h1>
+<div class="flex items-center gap-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-mute">search</span>
+<input class="pl-xl pr-md py-xs border border-hairline rounded font-body-sm w-64 focus:ring-1 focus:ring-ink-strong focus:outline-none bg-surface-container-lowest" placeholder="Filter users..." type="text"/>
+</div>
+<button class="bg-primary text-on-primary px-xl py-sm rounded font-body-sm font-medium flex items-center gap-xs hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">add</span> Add Entry
+                                </button>
+</div>
+</div>
+</div>
+<!-- High Density Table -->
+<div class="flex-1 overflow-auto data-table-container bg-canvas">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-low z-10 border-b border-hairline">
+<tr class="font-caption-mono text-caption-mono text-mute-soft uppercase tracking-wider">
+<th class="px-gutter py-md font-medium border-r border-hairline w-12 text-center">
+<input class="rounded-xs border-hairline" type="checkbox"/>
+</th>
+<th class="px-lg py-md font-medium border-r border-hairline">ID</th>
+<th class="px-lg py-md font-medium border-r border-hairline">User</th>
+<th class="px-lg py-md font-medium border-r border-hairline">Role</th>
+<th class="px-lg py-md font-medium border-r border-hairline">Status</th>
+<th class="px-lg py-md font-medium">Last Login</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-hairline">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest cursor-pointer transition-colors group">
+<td class="px-gutter py-md text-center border-r border-hairline">
+<input class="rounded-xs border-hairline" type="checkbox"/>
+</td>
+<td class="px-lg py-md border-r border-hairline font-caption-mono text-body-sm">#USR-8821</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-md">
+<img class="w-8 h-8 rounded-full border border-hairline object-cover" data-alt="Professional studio portrait of a young tech professional with short dark hair and a neutral expression, wearing a minimalist black turtleneck against a solid soft grey background. The lighting is crisp and modern, emphasizing high contrast and a precision-engineered aesthetic typical of a high-end visual development platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7Eld0aih_OYniy6Rlttnm9-mYg_7Jsp8174fTIbuB8h5323phYMqmuWtpKjus4ne1UovuQN7mrInMhFq7-kJZ4XwBF9vhAXufCC7kKIQOH7CVk4p3ixHl8RB4e5fdsCPWd0nv_bQuDzf4eQps-yovPHcIMuBMw0pVt1-bQwGOue8PULeDalriiBiJ7r1xZRfDb4RN-PAU1DLRMma-hXWSd03sH1M-3VXa7WDeBI-ViGN94c2bgptJCavbkXzyA9CDyvvKN6MJLaI"/>
+<div class="flex flex-col leading-tight">
+<span class="font-body-sm font-semibold text-ink-strong">Adrian Sterling</span>
+<span class="font-caption text-body-mid">a.sterling@flowblok.io</span>
+</div>
+</div>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<span class="bg-surface-container text-ink-strong px-sm py-xxs rounded text-[11px] font-bold uppercase tracking-tight">Administrator</span>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-accent-green"></span>
+<span class="font-body-sm text-ink-strong">Active</span>
+</div>
+</td>
+<td class="px-lg py-md font-body-sm text-body-mid">2 minutes ago</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest cursor-pointer transition-colors group bg-surface-container-low/30">
+<td class="px-gutter py-md text-center border-r border-hairline">
+<input checked="" class="rounded-xs border-hairline" type="checkbox"/>
+</td>
+<td class="px-lg py-md border-r border-hairline font-caption-mono text-body-sm">#USR-8794</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-md">
+<img class="w-8 h-8 rounded-full border border-hairline object-cover" data-alt="Studio portrait of a focused woman with blonde hair in a sleek bun, wearing minimalist dark professional attire. The setting is high-contrast, with clear directional lighting that highlights the texture of her clothing and the sharp details of her face against a minimalist white studio background. The mood is professional and authoritative." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhAa8B0i5NQXo-ywNx9jQJaVLoFJ_6d2ZDYKqfYkFJQod8vlCGE079Y6D2Eso3nYOxm2ZBqFWwmQP8oowz5elLn66xAObTNUSCbQ7Ek5obRMpuPNpC1dH1_dvwzsWeWYbUdLHz6qYs7uzkJANXaVaH5Q3Vt_vX9-_7mpctukZ799IXCeZG6Jqp-qxnuQaMNnEeJlE6EMbembsvqL0kaT9VShu0b0Y6qSEVJVWgbG-TDvQ3E-FfbAZZ6udqDGGosU8Q8_rL_DfvQfk"/>
+<div class="flex flex-col leading-tight">
+<span class="font-body-sm font-semibold text-ink-strong">Elena Vance</span>
+<span class="font-caption text-body-mid">elena.v@designlab.com</span>
+</div>
+</div>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<span class="bg-surface-container text-ink-strong px-sm py-xxs rounded text-[11px] font-bold uppercase tracking-tight">Editor</span>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-accent-green"></span>
+<span class="font-body-sm text-ink-strong">Active</span>
+</div>
+</td>
+<td class="px-lg py-md font-body-sm text-body-mid">14 hours ago</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest cursor-pointer transition-colors group">
+<td class="px-gutter py-md text-center border-r border-hairline">
+<input class="rounded-xs border-hairline" type="checkbox"/>
+</td>
+<td class="px-lg py-md border-r border-hairline font-caption-mono text-body-sm">#USR-8750</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-accent-purple text-white flex items-center justify-center font-bold text-xs">MW</div>
+<div class="flex flex-col leading-tight">
+<span class="font-body-sm font-semibold text-ink-strong">Marcus Wright</span>
+<span class="font-caption text-body-mid">marcus@alpha-corp.io</span>
+</div>
+</div>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<span class="bg-surface-container text-ink-strong px-sm py-xxs rounded text-[11px] font-bold uppercase tracking-tight">Viewer</span>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-mute"></span>
+<span class="font-body-sm text-body-mid">Offline</span>
+</div>
+</td>
+<td class="px-lg py-md font-body-sm text-body-mid">3 days ago</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-lowest cursor-pointer transition-colors group bg-surface-container-low/30">
+<td class="px-gutter py-md text-center border-r border-hairline">
+<input class="rounded-xs border-hairline" type="checkbox"/>
+</td>
+<td class="px-lg py-md border-r border-hairline font-caption-mono text-body-sm">#USR-8621</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-md">
+<img class="w-8 h-8 rounded-full border border-hairline object-cover" data-alt="A studio portrait of a man with spectacles and a short beard, wearing a crisp white dress shirt. The composition is tight and minimalist, with high-key lighting that evokes a modern workspace atmosphere. The color palette is restricted to whites, blacks, and subtle skin tones, aligned with a professional visual development platform's precision-tool aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgEn1ff5RP9vNNcU98HqlDoU1opOZD7PaKcikoLU2-IOhc3dhXoaipopdodB9rwDH7DaMS2-_8TbSYUtGFzlX0K4_g9rUPaZLi_p3OPgO-x3IVu_Gpz2nH5f-hUoiY6dIy6wlSM0vTFy3pp2xiR87Fbr0SEGI3uzFnFge_ZRtlB13L9FPQe0PZFLF9S_D801lMoDQK16uSih2zwgIVxnlj9szCRszBOv5ODHaRy19x5evkIHQmY00cja3k7bFUNEouRN4TON4x0_A"/>
+<div class="flex flex-col leading-tight">
+<span class="font-body-sm font-semibold text-ink-strong">Julian Thorne</span>
+<span class="font-caption text-body-mid">jthorne@freelance.org</span>
+</div>
+</div>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<span class="bg-surface-container text-ink-strong px-sm py-xxs rounded text-[11px] font-bold uppercase tracking-tight">Developer</span>
+</td>
+<td class="px-lg py-md border-r border-hairline">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-accent-green"></span>
+<span class="font-body-sm text-ink-strong">Active</span>
+</div>
+</td>
+<td class="px-lg py-md font-body-sm text-body-mid">1 week ago</td>
+</tr>
+<!-- Extra Empty Rows for high density feel -->
+<tr class="hover:bg-surface-container-lowest" v-for="i in 10">
+<td class="px-gutter py-md text-center border-r border-hairline"><input class="rounded-xs border-hairline" type="checkbox"/></td>
+<td class="px-lg py-md border-r border-hairline h-12"></td>
+<td class="px-lg py-md border-r border-hairline h-12"></td>
+<td class="px-lg py-md border-r border-hairline h-12"></td>
+<td class="px-lg py-md border-r border-hairline h-12"></td>
+<td class="px-lg py-md h-12"></td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Right Inspector Panel -->
+<aside class="absolute top-0 right-0 h-full w-80 bg-canvas border-l border-hairline shadow-[0_0_40px_rgba(0,0,0,0.05)] transform transition-transform duration-300 ease-in-out" id="inspector">
+<div class="flex flex-col h-full">
+<div class="p-lg border-b border-hairline flex justify-between items-center bg-surface">
+<h3 class="font-body-sm font-semibold text-ink-strong">Edit Entry</h3>
+<button class="text-body-mid hover:text-ink-strong" onclick="document.getElementById('inspector').style.transform = 'translateX(100%)'">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-lg space-y-2xl">
+<!-- Profile Section -->
+<div class="flex flex-col items-center py-xl bg-surface-container-low rounded border border-hairline">
+<div class="relative">
+<img class="w-20 h-20 rounded-full border-2 border-canvas object-cover shadow-sm" data-alt="Studio portrait of a focused woman with blonde hair in a sleek bun, wearing minimalist dark professional attire. High contrast, directional lighting, and minimalist white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW9dDFSKqOVcXgkTI_v-uymf94H0uv94h2xTGc2plY4UUx_8S1ywBRviefNxoFgiTdEqDmoFzHwSFC0JAiZW52mvfKw4hbgEmlpIqwAdQiDZ0Yb4p3PzZUclB6W3ZzDkslxuSNq3Oygr3b0D0ehsM0JcyaWi1ligYV_TFNpjaopom_mm-02U_ZrDG4AH--niBmyFRhACbdBk2S6CzEM1R9Cm54NogxRtIIyXeA6F4hSD72WEKQT6rgPU6j8J2Bil4AhPgrEeWLOh0"/>
+<button class="absolute bottom-0 right-0 bg-ink-strong text-white p-xxs rounded-full border-2 border-canvas">
+<span class="material-symbols-outlined text-[14px]">edit</span>
+</button>
+</div>
+<h4 class="mt-md font-display-xs text-ink-strong">Elena Vance</h4>
+<span class="text-caption text-body-mid">#USR-8794</span>
+</div>
+<!-- Form Fields -->
+<div class="space-y-xl">
+<div class="space-y-xs">
+<label class="font-caption-mono text-caption-mono text-mute uppercase tracking-widest">Full Name</label>
+<input class="w-full px-md py-xs border border-hairline rounded font-body-sm focus:ring-1 focus:ring-ink-strong focus:outline-none" type="text" value="Elena Vance"/>
+</div>
+<div class="space-y-xs">
+<label class="font-caption-mono text-caption-mono text-mute uppercase tracking-widest">Email Address</label>
+<input class="w-full px-md py-xs border border-hairline rounded font-body-sm focus:ring-1 focus:ring-ink-strong focus:outline-none" type="email" value="elena.v@designlab.com"/>
+</div>
+<div class="space-y-xs">
+<label class="font-caption-mono text-caption-mono text-mute uppercase tracking-widest">Role</label>
+<select class="w-full px-md py-xs border border-hairline rounded font-body-sm focus:ring-1 focus:ring-ink-strong focus:outline-none bg-canvas">
+<option>Administrator</option>
+<option selected="">Editor</option>
+<option>Developer</option>
+<option>Viewer</option>
+</select>
+</div>
+<div class="space-y-xs">
+<label class="font-caption-mono text-caption-mono text-mute uppercase tracking-widest">Workspace Access</label>
+<div class="flex flex-wrap gap-xs pt-xs">
+<span class="bg-surface-container-highest px-sm py-xxs rounded text-caption flex items-center gap-xxs border border-hairline">Design Lab <span class="material-symbols-outlined text-[14px] cursor-pointer">close</span></span>
+<span class="bg-surface-container-highest px-sm py-xxs rounded text-caption flex items-center gap-xxs border border-hairline">Marketing <span class="material-symbols-outlined text-[14px] cursor-pointer">close</span></span>
+<button class="px-sm py-xxs rounded text-caption border border-dashed border-mute text-mute hover:border-ink-strong hover:text-ink-strong transition-all">+ Add</button>
+</div>
+</div>
+</div>
+</div>
+<div class="p-lg border-t border-hairline bg-surface grid grid-cols-2 gap-md">
+<button class="py-sm border border-hairline text-ink-strong font-medium text-body-sm hover:bg-surface-container-low">Delete</button>
+<button class="py-sm bg-ink-strong text-white font-medium text-body-sm hover:opacity-90">Save Changes</button>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<!-- Footer (Shared Component) -->
+<footer class="w-full py-md bg-canvas border-t border-hairline flex justify-between items-center px-gutter w-full">
+<span class="font-caption text-caption text-body-mid">© 2024 Flowblok OS. All rights reserved.</span>
+<div class="flex space-x-lg">
+<a class="font-caption text-caption text-body-mid hover:text-ink-strong underline transition-all" href="#">Privacy Policy</a>
+<a class="font-caption text-caption text-body-mid hover:text-ink-strong underline transition-all" href="#">Terms of Service</a>
+<a class="font-caption text-caption text-body-mid hover:text-ink-strong underline transition-all" href="#">Status</a>
+</div>
+</footer>
+</main>
+</div>
+<script>
+        // Simple Interaction to open inspector on row click
+        const tableRows = document.querySelectorAll('tbody tr');
+        const inspector = document.getElementById('inspector');
+        
+        tableRows.forEach(row => {
+            row.addEventListener('click', () => {
+                inspector.style.transform = 'translateX(0)';
+            });
+        });
+
+        // Initialize table checkbox behavior
+        const masterCheck = document.querySelector('thead input[type="checkbox"]');
+        const rowChecks = document.querySelectorAll('tbody input[type="checkbox"]');
+        
+        masterCheck.addEventListener('change', (e) => {
+            rowChecks.forEach(check => check.checked = e.target.checked);
+        });
+    </script>
+</body></html>

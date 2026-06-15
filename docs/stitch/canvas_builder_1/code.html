@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok | Visual Canvas Builder</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .dot-grid {
+            background-image: radial-gradient(circle, #bbc9c8 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .canvas-container {
+            height: calc(100vh - 64px);
+        }
+        .glass-panel {
+            background: rgba(248, 249, 250, 0.8);
+            backdrop-filter: blur(8px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #bbc9c8;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d4e5f5",
+                        "secondary-container": "#d7e1ec",
+                        "surface-dim": "#d9dadb",
+                        "on-surface-variant": "#3c4948",
+                        "on-primary-container": "#003f3d",
+                        "surface-container": "#edeeef",
+                        "on-primary-fixed": "#00201f",
+                        "on-secondary-container": "#5a646d",
+                        "primary-fixed-dim": "#4fdad7",
+                        "primary-container": "#00b3b0",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-bright": "#f8f9fa",
+                        "secondary-fixed-dim": "#bec7d2",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e1e3e4",
+                        "background": "#f8f9fa",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#3f4851",
+                        "tertiary-fixed-dim": "#b8c8d8",
+                        "outline": "#6c7a79",
+                        "on-tertiary-fixed-variant": "#394955",
+                        "primary": "#006a68",
+                        "surface-container-high": "#e7e8e9",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#00504e",
+                        "secondary": "#565f69",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#0d1d29",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#dae3ee",
+                        "tertiary-container": "#93a3b2",
+                        "on-surface": "#191c1d",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#71f7f3",
+                        "on-secondary-fixed": "#131d24",
+                        "surface-container-low": "#f3f4f5",
+                        "inverse-primary": "#4fdad7",
+                        "on-error": "#ffffff",
+                        "surface-tint": "#006a68",
+                        "on-background": "#191c1d",
+                        "outline-variant": "#bbc9c8",
+                        "on-tertiary-container": "#2a3946",
+                        "inverse-on-surface": "#f0f1f2",
+                        "tertiary": "#50606e",
+                        "inverse-surface": "#2e3132",
+                        "surface": "#f8f9fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "container-max": "1280px",
+                        "sm": "8px",
+                        "sidebar-width": "260px",
+                        "xs": "4px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "code-md": ["14px", {"lineHeight": "22px", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md">
+<!-- TopNavBar -->
+<nav class="h-16 w-full sticky top-0 z-30 px-gutter flex justify-between items-center bg-surface/80 backdrop-blur-md border-b border-outline-variant">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-primary">DX OS</span>
+<div class="hidden md:flex items-center gap-4 font-label-md text-label-md">
+<span class="text-on-surface-variant">Flowblok</span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface-variant">Projects</span>
+<span class="text-outline-variant">/</span>
+<span class="text-primary font-bold border-b-2 border-primary pb-1">Current Page</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">play_arrow</span>
+<span class="font-label-md text-label-md">Run</span>
+</button>
+<button class="px-4 py-1.5 rounded-lg bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">cloud_upload</span>
+<span class="font-label-md text-label-md">Deploy</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">search</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">notifications</button>
+<div class="w-8 h-8 rounded-full bg-secondary-container overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjfzbe_vD70xPL8pTutOyCanyaPGqtILc7Ie4_2t3wk-HCeN00iDebjZjN_FvjS27bM8wAlvbcgnfKNK2GlQch1HIcmxvYid_jonrrdkruxoE3KOCA7sh1duiDOPjtj73DQAHrUxUhvD6SwpglSWCRuav_PQvT7n8MPU7G5_QZZLjMiYaqYEZZpnvI9w_hRCwKTR4S3mRMW7k7v9IDhBQA4Ixc1ouVYbrHkLfKK6ZvulXE4YeJKNTsIrc-UczXPtmcl5OxEOXKRhc"/>
+</div>
+</div>
+</nav>
+<main class="relative flex canvas-container overflow-hidden">
+<!-- Floating Pill Toolbar -->
+<div class="absolute left-6 top-1/2 -translate-y-1/2 z-20">
+<div class="glass-panel flex flex-col gap-2 p-2 rounded-full border border-outline-variant shadow-sm transition-all duration-300 hover:shadow-md">
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-secondary-container text-on-secondary-container transition-transform active:scale-95" title="Select">
+<span class="material-symbols-outlined">near_me</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-transform active:scale-95" title="Frame">
+<span class="material-symbols-outlined">crop_free</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-transform active:scale-95" title="Component">
+<span class="material-symbols-outlined">widgets</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-transform active:scale-95" title="Text">
+<span class="material-symbols-outlined">title</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-transform active:scale-95" title="Assets">
+<span class="material-symbols-outlined">image</span>
+</button>
+<div class="w-8 h-[1px] bg-outline-variant mx-auto my-1"></div>
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-transform active:scale-95" title="Layers">
+<span class="material-symbols-outlined">layers</span>
+</button>
+</div>
+</div>
+<!-- Main Canvas Area -->
+<section class="flex-grow relative overflow-auto dot-grid bg-background/50 flex items-center justify-center">
+<!-- Blank State Prompt -->
+<div class="group cursor-pointer text-center p-12 border-2 border-dashed border-outline-variant rounded-2xl hover:border-primary/50 transition-all duration-500 bg-surface/30 backdrop-blur-sm" id="canvas-prompt">
+<div class="w-16 h-16 rounded-full bg-primary-container/20 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-[32px]">add</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface-variant mb-2">Build your workflow</h2>
+<p class="font-body-md text-body-md text-outline">Drag components here or click to add an element</p>
+<div class="mt-8 flex gap-3 justify-center">
+<kbd class="px-2 py-1 rounded bg-surface-container-high border border-outline-variant font-code-md text-code-md text-on-surface-variant">⌘ K</kbd>
+<span class="text-outline font-body-sm text-body-sm self-center">to open command palette</span>
+</div>
+</div>
+<!-- Contextual Animation Overlay (Subtle Atmospheric) -->
+
+</section>
+<!-- Right Properties Panel (SideNavBar specialization) -->
+<aside class="w-[320px] h-full flex flex-col bg-surface border-l border-outline-variant z-10 shadow-sm">
+<div class="p-6 border-b border-outline-variant">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md uppercase tracking-wider text-outline">Properties</span>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors text-[20px]">more_horiz</button>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary">Content Tree</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Navigation &amp; Styles</p>
+</div>
+<div class="flex-grow overflow-y-auto custom-scrollbar p-4 flex flex-col gap-6">
+<!-- Navigation Structure -->
+<div>
+<label class="font-label-md text-label-md text-on-surface-variant mb-3 block px-2">Structure</label>
+<div class="space-y-1">
+<div class="flex items-center gap-3 px-3 py-2 text-primary font-semibold bg-tertiary-fixed rounded-md cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span class="font-body-sm text-body-sm">Pages</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[20px]">database</span>
+<span class="font-body-sm text-body-sm">Collections</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[20px]">schema</span>
+<span class="font-body-sm text-body-sm">Schemas</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant rounded-md cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[20px]">language</span>
+<span class="font-body-sm text-body-sm">Global</span>
+</div>
+</div>
+</div>
+<!-- Element Properties (Placeholder) -->
+<div>
+<label class="font-label-md text-label-md text-on-surface-variant mb-3 block px-2">Layout</label>
+<div class="grid grid-cols-2 gap-3 px-2">
+<div class="space-y-1">
+<span class="text-[10px] uppercase text-outline font-bold">Width</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-code-md text-code-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" value="100%"/>
+</div>
+<div class="space-y-1">
+<span class="text-[10px] uppercase text-outline font-bold">Height</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 font-code-md text-code-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" value="Auto"/>
+</div>
+</div>
+</div>
+<!-- Appearance Section -->
+<div class="border-t border-outline-variant pt-6">
+<label class="font-label-md text-label-md text-on-surface-variant mb-3 block px-2">Appearance</label>
+<div class="px-2 space-y-4">
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Fill Color</span>
+<div class="flex items-center gap-2">
+<span class="font-code-md text-code-md text-outline">#F8F9FA</span>
+<div class="w-6 h-6 rounded border border-outline-variant bg-[#f8f9fa]"></div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Corner Radius</span>
+<input class="w-24 accent-primary" type="range"/>
+</div>
+</div>
+</div>
+<!-- Asset Preview Card -->
+<div class="mt-4 p-4 rounded-xl border border-outline-variant bg-surface-container-lowest">
+<label class="font-label-md text-label-md text-on-surface-variant mb-2 block">Reference Asset</label>
+<div class="w-full aspect-video rounded-lg overflow-hidden bg-surface-container mb-3">
+<img class="w-full h-full object-cover opacity-80 hover:scale-105 transition-transform duration-700" data-alt="A clean, abstract composition of minimalist UI elements featuring soft shadows and teal accents against a light grey background. The image evokes a sense of organized digital workflow and architectural precision with sleek, functional layers and a bright, airy atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0Lln8XFxkM26FZ9g-CmJk0kZ9NY2HeLjWV0Lews68fVQ74imtRncj8mPwL1kOTmnnhK_Y632_QZy4oQbski0tUKuFIoOEYzbBhFlkCIthJ8snQP7otuzjatT6YmFI23ilIiZpQAHvd71p52ZZAP0zkbHmhDl2lHQ76CjaXMzzwvmnN40_bZqWs-GNrTd6yiYCefP54h94Y2QlEyjeZI4UL5XA_JVRNg2XKDicuF7yWPs-XBPHrWa0hszt6bi4kGTtswDql9PCPGA"/>
+</div>
+<button class="w-full py-2 bg-surface-container-high rounded-lg font-label-md text-label-md text-primary hover:bg-secondary-container transition-colors">Replace Asset</button>
+</div>
+</div>
+<div class="p-4 border-t border-outline-variant bg-surface-container-low">
+<button class="w-full py-3 bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95">
+<span class="material-symbols-outlined">save</span>
+<span>Save Changes</span>
+</button>
+</div>
+</aside>
+</main>
+<!-- Interactive Layer Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvasPrompt = document.getElementById('canvas-prompt');
+            const toolbarButtons = document.querySelectorAll('.glass-panel button');
+
+            // Subtle button ripple/interaction
+            toolbarButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    toolbarButtons.forEach(b => b.classList.remove('bg-secondary-container', 'text-on-secondary-container'));
+                    toolbarButtons.forEach(b => b.classList.add('hover:bg-surface-container-high', 'text-on-surface-variant'));
+                    
+                    btn.classList.remove('hover:bg-surface-container-high', 'text-on-surface-variant');
+                    btn.classList.add('bg-secondary-container', 'text-on-secondary-container');
+                });
+            });
+
+            // Canvas drag/click interaction simulation
+            canvasPrompt.addEventListener('click', () => {
+                canvasPrompt.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    canvasPrompt.style.transform = 'scale(1)';
+                }, 100);
+            });
+        });
+    </script>
+</body></html>

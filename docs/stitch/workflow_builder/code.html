@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok OS | Workflow Builder</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+            font-size: 18px;
+        }
+        .canvas-grid {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .node-connector-line {
+            stroke-dasharray: 4;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+        .active-path {
+            filter: drop-shadow(0 0 2px rgba(37, 99, 235, 0.5));
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e7e7f3",
+                        "on-secondary-fixed-variant": "#474646",
+                        "on-background": "#191b23",
+                        "tertiary-container": "#bc4800",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffede6",
+                        "secondary-container": "#e5e2e1",
+                        "surface-container-low": "#f3f3fe",
+                        "on-primary-fixed": "#00174b",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191b23",
+                        "tertiary-fixed": "#ffdbcd",
+                        "dark-canvas": "#0A0A0A",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#faf8ff",
+                        "surface": "#FAFAFA",
+                        "surface-tint": "#0053db",
+                        "on-secondary-container": "#656464",
+                        "on-surface-variant": "#434655",
+                        "primary": "#004ac6",
+                        "tertiary": "#943700",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "inverse-primary": "#b4c5ff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container-highest": "#e1e2ed",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#2563eb",
+                        "surface-container": "#ededf9",
+                        "surface-variant": "#e1e2ed",
+                        "on-error": "#ffffff",
+                        "border": "#EEEEEE",
+                        "secondary-fixed": "#e5e2e1",
+                        "outline-variant": "#c3c6d7",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2e3039",
+                        "text-primary": "#111111",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "outline": "#737686",
+                        "surface-dim": "#d9d9e5",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-primary-container": "#eeefff",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-tertiary-fixed": "#360f00",
+                        "secondary": "#5f5e5e",
+                        "canvas": "#FFFFFF",
+                        "background": "#faf8ff",
+                        "error-container": "#ffdad6",
+                        "text-secondary": "#666666"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-v": "120px",
+                        "base": "8px",
+                        "max-width": "1200px",
+                        "margin-page": "40px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display": ["Inter"],
+                        "headline": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-medium": ["Inter"],
+                        "body": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display": ["72px", {"lineHeight": "0.95", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "headline": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-sm": ["13px", {"lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                        "body-medium": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "body": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-canvas dark:bg-dark-canvas overflow-hidden flex h-screen">
+<!-- SideNavBar Component -->
+<aside class="flex flex-col py-8 px-4 gap-base bg-canvas dark:bg-dark-canvas border-r border-border dark:border-on-secondary-fixed-variant h-screen w-64 transition-all duration-150 z-30">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center text-white font-bold text-xs">F</div>
+<div>
+<h2 class="font-headline text-body-medium font-bold text-text-primary dark:text-on-surface">Flowblok Dev</h2>
+<p class="font-label-caps text-[10px] text-text-secondary uppercase tracking-widest">Standard Node</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary dark:text-on-surface-variant hover:text-text-primary hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+                Command Center
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-primary font-bold border-r-2 border-primary bg-surface-container-low dark:bg-surface-container-highest transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+                Workflow Builder
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary dark:text-on-surface-variant hover:text-text-primary hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                Content Engine
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary dark:text-on-surface-variant hover:text-text-primary hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+                Database
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary dark:text-on-surface-variant hover:text-text-primary hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                System Info
+            </a>
+</nav>
+<div class="mt-auto flex flex-col gap-1 pt-4 border-t border-border dark:border-on-secondary-fixed-variant">
+<a class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary dark:text-on-surface-variant hover:text-text-primary hover:bg-surface-container-low transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Documentation
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary dark:text-on-surface-variant hover:text-text-primary hover:bg-surface-container-low transition-all duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="code">code</span>
+                Terminal
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative overflow-hidden bg-dark-canvas">
+<!-- TopNavBar Component -->
+<header class="flex justify-between items-center px-margin-page w-full h-[56px] border-b border-border dark:border-on-secondary-fixed-variant bg-canvas dark:bg-dark-canvas z-20">
+<div class="flex items-center gap-gutter">
+<span class="font-headline text-body-medium font-bold text-text-primary dark:text-on-surface">Flowblok OS</span>
+<div class="h-4 w-px bg-on-secondary-fixed-variant mx-2"></div>
+<nav class="flex gap-6 items-center h-full">
+<a class="text-text-secondary dark:text-on-surface-variant hover:text-text-primary font-body text-sm transition-colors" href="#">Dashboard</a>
+<a class="text-primary border-b-2 border-primary pb-1 font-body text-sm font-medium" href="#">Workflows</a>
+<a class="text-text-secondary dark:text-on-surface-variant hover:text-text-primary font-body text-sm transition-colors" href="#">CMS</a>
+<a class="text-text-secondary dark:text-on-surface-variant hover:text-text-primary font-body text-sm transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors" data-icon="search">search</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors" data-icon="notifications">notifications</button>
+<div class="w-8 h-8 rounded-full border border-border overflow-hidden">
+<img alt="User" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1Ld-M2M6XE1bnfqBLoB990__k1dmEtSum6F3GMoNjRlaswnDrAZeAZ8I-YkKc0c3RCU4c3a38v3rRdZhO9roKyBHeSln3GfKL8Mjtis19URFtMglXTibrgAosdpL6FhHrtWlr03euQ5Dbxs-WmYdS86Zix0fuHFZWQ-BlTYAGlHHSeRquCfRZ_QolrXr-U6eMxIF5OT0ez0Ta2IiUT6um9ugFzknsySXt7emrcIcsGPvP0xM3h0mr5uHkb2GR2YvXtlX8dlOzrdY"/>
+</div>
+</div>
+</header>
+<!-- Builder Canvas -->
+<div class="flex-1 relative canvas-grid overflow-hidden">
+<!-- Context Menu / Toolbar Overlay -->
+<div class="absolute top-6 left-6 flex items-center gap-2 p-1 bg-[#111111] border border-[#222222] rounded shadow-xl z-10">
+<button class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-[#1A1A1A] rounded transition-all material-symbols-outlined" data-icon="add" title="Add Node">add</button>
+<button class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-[#1A1A1A] rounded transition-all material-symbols-outlined" data-icon="mouse" title="Select">mouse</button>
+<button class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-[#1A1A1A] rounded transition-all material-symbols-outlined" data-icon="pan_tool" title="Pan">pan_tool</button>
+<div class="w-px h-6 bg-[#222222] mx-1"></div>
+<button class="p-2 text-primary hover:bg-[#1A1A1A] rounded transition-all material-symbols-outlined" data-icon="play_arrow" data-weight="fill" style="font-variation-settings: 'FILL' 1;" title="Execute">play_arrow</button>
+</div>
+<!-- SVG Connection Layer -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-0">
+<defs>
+<marker id="arrowhead" markerheight="7" markerwidth="10" orient="auto" refx="0" refy="3.5">
+<polygon fill="#2563EB" points="0 0, 10 3.5, 0 7"></polygon>
+</marker>
+</defs>
+<!-- Execution Path -->
+<path class="node-connector-line active-path" d="M 280 200 L 420 200" fill="none" stroke="#2563EB" stroke-width="1.5"></path>
+<path class="node-connector-line active-path" d="M 580 200 C 650 200, 650 350, 720 350" fill="none" stroke="#2563EB" stroke-width="1.5"></path>
+<path d="M 580 200 C 650 200, 650 100, 720 100" fill="none" stroke="#333333" stroke-width="1"></path>
+<path class="node-connector-line active-path" d="M 880 350 L 980 350" fill="none" stroke="#2563EB" stroke-width="1.5"></path>
+</svg>
+<!-- Node Interface -->
+<div class="absolute inset-0 p-20 flex items-start gap-32">
+<!-- Trigger Node -->
+<div class="relative group">
+<div class="w-[160px] bg-[#0F0F0F] border border-primary-container p-4 rounded shadow-2xl transition-transform hover:scale-[1.02] cursor-grab active:cursor-grabbing">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="bolt" data-weight="fill" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-label-caps text-[10px] uppercase tracking-tighter text-on-surface">Trigger</span>
+</div>
+<p class="text-xs text-on-surface font-medium">HTTP Webhook</p>
+<div class="mt-4 flex items-center justify-between text-[10px] text-on-surface-variant font-mono">
+<span>POST</span>
+<span class="bg-[#1A1A1A] px-1 rounded">200 OK</span>
+</div>
+</div>
+<!-- Output Dot -->
+<div class="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-primary-container rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+</div>
+</div>
+<!-- Logic Node -->
+<div class="relative mt-0">
+<div class="w-[160px] bg-[#0F0F0F] border border-[#222222] p-4 rounded shadow-2xl transition-transform hover:scale-[1.02] cursor-grab">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="account_tree">account_tree</span>
+<span class="font-label-caps text-[10px] uppercase tracking-tighter text-on-surface-variant">Conditional</span>
+</div>
+<p class="text-xs text-on-surface font-medium">Filter Logic</p>
+<div class="mt-4 flex flex-col gap-2">
+<div class="h-1 w-full bg-[#1A1A1A] rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+<span class="text-[9px] text-on-surface-variant font-mono">user.role == 'admin'</span>
+</div>
+</div>
+<!-- Input Dot -->
+<div class="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-primary-container rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+</div>
+<!-- Output Dots -->
+<div class="absolute right-[-8px] top-[25%] -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-[#222222] rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-[#222222] rounded-full"></div>
+</div>
+<div class="absolute right-[-8px] top-[75%] -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-primary-container rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+</div>
+</div>
+<!-- Column of nodes -->
+<div class="flex flex-col gap-24 mt-[-60px]">
+<!-- Inactive Node -->
+<div class="relative opacity-40">
+<div class="w-[160px] bg-[#0F0F0F] border border-[#222222] p-4 rounded shadow-2xl transition-transform">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="mail">mail</span>
+<span class="font-label-caps text-[10px] uppercase tracking-tighter text-on-surface-variant">Notify</span>
+</div>
+<p class="text-xs text-on-surface font-medium">Send Email</p>
+</div>
+<div class="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-[#222222] rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-[#222222] rounded-full"></div>
+</div>
+</div>
+<!-- Active Node -->
+<div class="relative">
+<div class="w-[160px] bg-[#0F0F0F] border border-primary-container p-4 rounded shadow-2xl transition-transform border-l-4">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="database" data-weight="fill" style="font-variation-settings: 'FILL' 1;">database</span>
+<span class="font-label-caps text-[10px] uppercase tracking-tighter text-on-surface">Storage</span>
+</div>
+<p class="text-xs text-on-surface font-medium">Upsert Record</p>
+<div class="mt-4 flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="text-[9px] text-primary font-mono">Syncing...</span>
+</div>
+</div>
+<div class="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-primary-container rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+</div>
+<div class="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-primary-container rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Final Node -->
+<div class="relative mt-[150px]">
+<div class="w-[160px] bg-[#0F0F0F] border border-primary-container p-4 rounded shadow-2xl border-dashed">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-caps text-[10px] uppercase tracking-tighter text-on-surface">End</span>
+</div>
+<p class="text-xs text-on-surface font-medium">Process Complete</p>
+</div>
+<div class="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-4 bg-[#0F0F0F] border border-primary-container rounded-full flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Stats Overlay Bottom Right -->
+<div class="absolute bottom-6 right-6 p-4 bg-[#111111]/80 backdrop-blur-md border border-[#222222] rounded flex gap-8 items-center z-10">
+<div class="flex flex-col">
+<span class="text-[9px] text-on-surface-variant uppercase tracking-widest font-bold">Latency</span>
+<span class="text-sm font-mono text-primary">12ms</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] text-on-surface-variant uppercase tracking-widest font-bold">Health</span>
+<span class="text-sm font-mono text-[#10b981]">99.9%</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] text-on-surface-variant uppercase tracking-widest font-bold">Nodes</span>
+<span class="text-sm font-mono text-on-surface">4 Active</span>
+</div>
+</div>
+<!-- MiniMap -->
+<div class="absolute bottom-6 left-6 w-32 h-20 bg-[#111111] border border-[#222222] rounded overflow-hidden z-10">
+<div class="w-full h-full opacity-50 canvas-grid">
+<div class="absolute top-4 left-4 w-4 h-2 bg-primary/40 rounded-sm"></div>
+<div class="absolute top-4 left-12 w-4 h-2 bg-on-surface-variant/40 rounded-sm"></div>
+<div class="absolute top-10 left-18 w-4 h-2 bg-primary/40 rounded-sm"></div>
+<!-- Viewport Indicator -->
+<div class="absolute inset-0 border border-primary/40 m-2"></div>
+</div>
+</div>
+</div>
+<!-- Node Configuration Sidebar (Folded Out) -->
+<div class="absolute right-0 top-[56px] bottom-0 w-80 bg-canvas border-l border-border transition-transform transform translate-x-full lg:translate-x-0 z-10">
+<div class="p-6 h-full flex flex-col gap-6">
+<div class="flex justify-between items-center">
+<h3 class="font-headline text-body-medium font-bold text-text-primary">Configuration</h3>
+<button class="material-symbols-outlined text-text-secondary" data-icon="close">close</button>
+</div>
+<div class="space-y-4">
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-text-secondary uppercase">Node Name</label>
+<input class="w-full bg-white border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none rounded" type="text" value="Upsert Record"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-text-secondary uppercase">Target Database</label>
+<select class="w-full bg-white border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none rounded">
+<option>Production-Cluster-01</option>
+<option>Staging-Node-Alpha</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-text-secondary uppercase">Retry Policy</label>
+<div class="flex gap-2">
+<button class="flex-1 py-2 text-xs border border-primary bg-primary-container/10 text-primary font-medium rounded">Linear</button>
+<button class="flex-1 py-2 text-xs border border-border text-text-secondary rounded">Exponential</button>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-border space-y-4">
+<div class="p-3 bg-surface-container rounded border border-border">
+<div class="flex justify-between items-center mb-2">
+<span class="text-[10px] font-bold text-text-secondary uppercase">Last Execution</span>
+<span class="text-[10px] text-primary font-mono">2s ago</span>
+</div>
+<div class="bg-dark-canvas p-2 rounded font-mono text-[10px] text-on-surface-variant overflow-hidden">
+                            { "status": 201, "id": "uuid-901" }
+                        </div>
+</div>
+<button class="w-full h-10 bg-primary text-white font-label-caps text-label-caps rounded hover:bg-primary/90 transition-all">Save Changes</button>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple micro-interaction for node highlighting
+        document.querySelectorAll('.bg-[#0F0F0F]').forEach(node => {
+            node.addEventListener('mouseenter', () => {
+                node.style.borderColor = '#2563EB';
+                node.style.transition = 'all 0.1s ease-out';
+            });
+            node.addEventListener('mouseleave', () => {
+                if(!node.classList.contains('border-primary-container')) {
+                    node.style.borderColor = '#222222';
+                }
+            });
+        });
+
+        // Toggle configuration sidebar (Mobile simulation)
+        const configBtn = document.querySelector('[data-icon="account_circle"]'); // reusing for placeholder
+        // In real app, clicking a node would open it
+    </script>
+</body></html>
