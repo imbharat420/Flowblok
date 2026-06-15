@@ -5,6 +5,16 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-16
+**Workflow Builder (n8n-style).**
+### Added
+- Workflows list (`/workflows`) with status, node count, run stats.
+- Canvas editor (`/workflows/:id`): dark grid canvas, draggable node cards, SVG bezier connections,
+  node palette grouped by category, node inspector, and a "Test workflow" execution animation.
+- Workflow engine API (repository → service → controller): `GET /api/workflows`,
+  `/api/workflows/:id`, `/api/workflows/node-types` (14 node types).
+- n8n/Boomi power behind a simpler abstraction — the engine, not n8n, is exposed.
+
 ## [0.2.0] — 2026-06-16
 **Visual Page Builder.**
 ### Added
@@ -26,6 +36,7 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.3.0
 [0.2.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.2.0
 [0.1.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.1.0

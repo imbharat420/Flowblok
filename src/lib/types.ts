@@ -99,3 +99,43 @@ export interface UpdateStoryInput {
   status?: ContentStatus;
   content?: BlockNode;
 }
+
+// ----- Workflow engine (n8n / Boomi inspired) -----
+
+export type NodeKind = "trigger" | "logic" | "action" | "integration";
+
+export interface NodeType {
+  type: string; // e.g. "webhook", "if", "send_email"
+  label: string;
+  icon: string; // lucide icon name
+  kind: NodeKind;
+  category: string; // palette group
+  description: string;
+}
+
+export interface WorkflowNode {
+  id: string;
+  type: string; // references NodeType.type
+  name: string;
+  x: number;
+  y: number;
+  config?: Record<string, unknown>;
+}
+
+export interface WorkflowConnection {
+  id: string;
+  from: string; // node id
+  to: string; // node id
+}
+
+export type WorkflowStatus = "active" | "inactive" | "draft";
+
+export interface Workflow {
+  id: string;
+  name: string;
+  status: WorkflowStatus;
+  nodes: WorkflowNode[];
+  connections: WorkflowConnection[];
+  lastRun: string | null;
+  runs: number;
+}
