@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import type { ContentStatus, Folder, Paginated, Story } from "@/lib/types";
 import { Folder as FolderIcon, Search, SlidersHorizontal, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface ContentResponse extends Paginated<Story> {
   meta: {
@@ -23,6 +24,7 @@ const STATUS_TABS: Array<{ key: ContentStatus | "all"; label: string }> = [
 ];
 
 export default function ContentPage() {
+  const router = useRouter();
   const [data, setData] = useState<ContentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -130,6 +132,7 @@ export default function ContentPage() {
                     data?.items.map((s) => (
                       <tr
                         key={s.id}
+                        onClick={() => router.push(`/content/${s.id}`)}
                         className="cursor-pointer border-b border-border bg-bg transition-colors last:border-0 hover:bg-surface"
                       >
                         <td className="px-4 py-3">
