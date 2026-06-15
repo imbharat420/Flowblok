@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok OS | CMS Data Engine</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFFFFF;
+            color: #111111;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #EEEEEE;
+            border-radius: 10px;
+        }
+        .side-panel-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .node-connector {
+            stroke: #EEEEEE;
+            stroke-width: 1.5;
+            fill: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e7e7f3",
+                        "on-secondary-fixed-variant": "#474646",
+                        "on-background": "#191b23",
+                        "tertiary-container": "#bc4800",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffede6",
+                        "secondary-container": "#e5e2e1",
+                        "surface-container-low": "#f3f3fe",
+                        "on-primary-fixed": "#00174b",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191b23",
+                        "tertiary-fixed": "#ffdbcd",
+                        "dark-canvas": "#0A0A0A",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#faf8ff",
+                        "surface": "#FAFAFA",
+                        "surface-tint": "#0053db",
+                        "on-secondary-container": "#656464",
+                        "on-surface-variant": "#434655",
+                        "primary": "#004ac6",
+                        "tertiary": "#943700",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "inverse-primary": "#b4c5ff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container-highest": "#e1e2ed",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#2563eb",
+                        "surface-container": "#ededf9",
+                        "surface-variant": "#e1e2ed",
+                        "on-error": "#ffffff",
+                        "border": "#EEEEEE",
+                        "secondary-fixed": "#e5e2e1",
+                        "outline-variant": "#c3c6d7",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2e3039",
+                        "text-primary": "#111111",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "outline": "#737686",
+                        "surface-dim": "#d9d9e5",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-primary-container": "#eeefff",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-tertiary-fixed": "#360f00",
+                        "secondary": "#5f5e5e",
+                        "canvas": "#FFFFFF",
+                        "background": "#faf8ff",
+                        "error-container": "#ffdad6",
+                        "text-secondary": "#666666"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-v": "120px",
+                        "base": "8px",
+                        "max-width": "1200px",
+                        "margin-page": "40px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display": ["Inter"],
+                        "headline": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-medium": ["Inter"],
+                        "body": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display": ["72px", { "lineHeight": "0.95", "letterSpacing": "-0.04em", "fontWeight": "600" }],
+                        "headline": ["40px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-sm": ["13px", { "lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600" }],
+                        "body-medium": ["16px", { "lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "500" }],
+                        "body": ["16px", { "lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-canvas text-text-primary antialiased flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="hidden md:flex flex-col py-8 px-4 gap-base bg-canvas border-r border-border h-screen w-64 flex-shrink-0">
+<div class="mb-8 px-2">
+<h1 class="font-headline text-body-medium font-bold text-text-primary">Flowblok Dev</h1>
+<p class="font-label-caps text-[10px] text-text-secondary tracking-widest mt-1 uppercase">Standard Node</p>
+</div>
+<nav class="flex-grow flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150 rounded group" href="#">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+<span class="font-label-caps text-label-caps">Command Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150 rounded group" href="#">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span class="font-label-caps text-label-caps">Workflow Builder</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-primary font-bold border-r-2 border-primary bg-surface-container-low transition-all duration-150 group" href="#">
+<span class="material-symbols-outlined text-[20px]">description</span>
+<span class="font-label-caps text-label-caps">Content Engine</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150 rounded group" href="#">
+<span class="material-symbols-outlined text-[20px]">database</span>
+<span class="font-label-caps text-label-caps">Database</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150 rounded group" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="font-label-caps text-label-caps">System Info</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-2 pt-4 border-t border-border">
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150 rounded" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span class="font-label-caps text-label-caps uppercase">Documentation</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150 rounded" href="#">
+<span class="material-symbols-outlined text-[20px]">code</span>
+<span class="font-label-caps text-label-caps uppercase">Terminal</span>
+</a>
+<div class="flex items-center gap-3 px-2 mt-4">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuACa5vFU2eKMnn0nhoiUz_9izQGgv4DL5lUFMDYCEnpSX2FIXQnxycCwg4pgZ3MNua-kBqlq4sARxgEDwK9WcpPhDVL3MRZ8gWdTvCfeABRsQhdrMd8unw6QbRUFdnQ1gXD8c1KV1YPJdYfbQRmZOUXIv10JpvBDVoSN503jMsC_Ca7-nKb-L7gtEsQdQsJEd4pUa_JfptdIO9evDgo_iDsZm3gyVsteTia7lCi2trVplW30-gwj6Cw-2n8GLMxsOWfmpzyHOMQ18s"/>
+</div>
+<div class="flex flex-col">
+<span class="text-[12px] font-bold leading-none">Admin</span>
+<span class="text-[10px] text-text-secondary">v2.4.0-stable</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-grow flex flex-col min-w-0 bg-canvas relative">
+<!-- Top Navigation Bar -->
+<header class="flex justify-between items-center px-margin-page w-full h-[56px] bg-canvas border-b border-border z-10">
+<div class="flex items-center gap-8 h-full">
+<span class="font-headline text-body-medium font-bold text-text-primary">Flowblok OS</span>
+<nav class="flex gap-6 h-full items-center">
+<a class="font-body text-[14px] text-text-secondary hover:text-text-primary transition-colors" href="#">Dashboard</a>
+<a class="font-body text-[14px] text-text-secondary hover:text-text-primary transition-colors" href="#">Workflows</a>
+<a class="font-body text-[14px] text-primary border-b-2 border-primary h-full flex items-center mt-[2px]" href="#">CMS</a>
+<a class="font-body text-[14px] text-text-secondary hover:text-text-primary transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined text-text-secondary group-hover:text-text-primary cursor-pointer transition-colors p-2">search</span>
+</div>
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary cursor-pointer transition-colors p-2">notifications</span>
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary cursor-pointer transition-colors p-2">account_circle</span>
+</div>
+</header>
+<!-- CMS Toolbar -->
+<section class="h-14 flex items-center px-margin-page border-b border-border justify-between bg-white shrink-0">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low rounded border border-border cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+<span class="font-label-caps text-[11px]">MASTER_SCHEMA</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</div>
+<div class="h-4 w-px bg-border"></div>
+<button class="flex items-center gap-2 text-text-secondary hover:text-text-primary">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+<span class="text-[13px] font-medium">Filter</span>
+</button>
+<button class="flex items-center gap-2 text-text-secondary hover:text-text-primary">
+<span class="material-symbols-outlined text-[18px]">sort</span>
+<span class="text-[13px] font-medium">Sort</span>
+</button>
+<button class="flex items-center gap-2 text-text-secondary hover:text-text-primary">
+<span class="material-symbols-outlined text-[18px]">search</span>
+<span class="text-[13px] font-medium">Search</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-1.5 text-text-secondary text-[13px] font-medium hover:bg-surface-container-low rounded transition-colors">Share</button>
+<button class="px-4 py-1.5 bg-primary text-white text-[13px] font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    New Entry
+                </button>
+</div>
+</section>
+<!-- CMS Content (The "Elite Table") -->
+<section class="flex-grow overflow-auto custom-scrollbar relative">
+<table class="w-full border-collapse">
+<thead class="sticky top-0 bg-white z-20">
+<tr class="border-b border-border">
+<th class="w-10 p-4"><input class="rounded border-border text-primary focus:ring-primary h-4 w-4" type="checkbox"/></th>
+<th class="text-left font-label-caps text-label-caps text-text-secondary p-4 uppercase tracking-widest min-w-[200px]">Identifier</th>
+<th class="text-left font-label-caps text-label-caps text-text-secondary p-4 uppercase tracking-widest min-w-[150px]">Status</th>
+<th class="text-left font-label-caps text-label-caps text-text-secondary p-4 uppercase tracking-widest min-w-[200px]">Assigned Node</th>
+<th class="text-left font-label-caps text-label-caps text-text-secondary p-4 uppercase tracking-widest min-w-[120px]">Load</th>
+<th class="text-left font-label-caps text-label-caps text-text-secondary p-4 uppercase tracking-widest min-w-[150px]">Last Sync</th>
+<th class="w-10 p-4"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border">
+<!-- Row 1 -->
+<tr class="hover:bg-surface group cursor-pointer" onclick="toggleSidePanel(true, 'Asset Optimization Engine')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary h-4 w-4" type="checkbox"/></td>
+<td class="p-4 font-body-medium text-[14px]">FB-X90-CORE-ASSET</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-50 text-green-700 border border-green-100">OPERATIONAL</span>
+</td>
+<td class="p-4 text-text-secondary text-[14px] font-mono">NODE_PRIME_01</td>
+<td class="p-4">
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[42%]"></div>
+</div>
+</td>
+<td class="p-4 text-text-secondary text-[13px]">2 mins ago</td>
+<td class="p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface group cursor-pointer" onclick="toggleSidePanel(true, 'Neural Process Controller')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary h-4 w-4" type="checkbox"/></td>
+<td class="p-4 font-body-medium text-[14px]">FB-X90-NEURAL-PROC</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-100">PROCESSING</span>
+</td>
+<td class="p-4 text-text-secondary text-[14px] font-mono">NODE_PRIME_04</td>
+<td class="p-4">
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[88%]"></div>
+</div>
+</td>
+<td class="p-4 text-text-secondary text-[13px]">14 mins ago</td>
+<td class="p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface group cursor-pointer" onclick="toggleSidePanel(true, 'Data Shard Replicator')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary h-4 w-4" type="checkbox"/></td>
+<td class="p-4 font-body-medium text-[14px]">FB-X90-SHARD-REPL</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-100">IDLE</span>
+</td>
+<td class="p-4 text-text-secondary text-[14px] font-mono">NODE_AUX_92</td>
+<td class="p-4">
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[12%]"></div>
+</div>
+</td>
+<td class="p-4 text-text-secondary text-[13px]">1 hour ago</td>
+<td class="p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface group cursor-pointer" onclick="toggleSidePanel(true, 'Security Protocol Layer')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary h-4 w-4" type="checkbox"/></td>
+<td class="p-4 font-body-medium text-[14px]">FB-X90-SEC-LAYER</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-50 text-green-700 border border-green-100">OPERATIONAL</span>
+</td>
+<td class="p-4 text-text-secondary text-[14px] font-mono">NODE_PRIME_01</td>
+<td class="p-4">
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[35%]"></div>
+</div>
+</td>
+<td class="p-4 text-text-secondary text-[13px]">5 mins ago</td>
+<td class="p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</span>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface group cursor-pointer" onclick="toggleSidePanel(true, 'Query Optimizer Module')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary h-4 w-4" type="checkbox"/></td>
+<td class="p-4 font-body-medium text-[14px]">FB-X90-QUERY-OPT</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-100">DEGRADED</span>
+</td>
+<td class="p-4 text-text-secondary text-[14px] font-mono">NODE_AUX_11</td>
+<td class="p-4">
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[94%]"></div>
+</div>
+</td>
+<td class="p-4 text-text-secondary text-[13px]">Just now</td>
+<td class="p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</span>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface group cursor-pointer" onclick="toggleSidePanel(true, 'Legacy Archive Bridge')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary h-4 w-4" type="checkbox"/></td>
+<td class="p-4 font-body-medium text-[14px]">FB-X90-ARCHIVE-BR</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-100">IDLE</span>
+</td>
+<td class="p-4 text-text-secondary text-[14px] font-mono">NODE_AUX_42</td>
+<td class="p-4">
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[5%]"></div>
+</div>
+</td>
+<td class="p-4 text-text-secondary text-[13px]">4 hours ago</td>
+<td class="p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</span>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Empty Filler Area to show spacing -->
+<div class="h-96"></div>
+</section>
+<!-- Contextual Side Panel -->
+<div class="absolute top-0 right-0 h-full w-[450px] bg-white border-l border-border side-panel-transition translate-x-full z-30 shadow-xl flex flex-col" id="sidePanel">
+<div class="p-6 border-b border-border flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-text-secondary">description</span>
+<h2 class="font-headline text-body-medium font-bold truncate max-w-[280px]" id="panelTitle">Entity Editor</h2>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-surface-container-low rounded text-text-secondary transition-colors">
+<span class="material-symbols-outlined text-[20px]">open_in_full</span>
+</button>
+<button class="p-2 hover:bg-surface-container-low rounded text-text-secondary transition-colors" onclick="toggleSidePanel(false)">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<div class="flex-grow overflow-auto p-6 custom-scrollbar space-y-8">
+<!-- Image Header for Entity -->
+<div class="rounded-lg overflow-hidden border border-border">
+<div class="h-32 bg-surface-container-high relative">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist high-tech server room background with glowing blue and white fiber optic lights. The aesthetic is extremely precise and clinical, featuring sleek metallic surfaces and a monochromatic palette with subtle depth. The lighting is bright and modern, conveying a high-performance cloud infrastructure environment." id="entityImage" src="https://lh3.googleusercontent.com/aida-public/AB6AXuByliBi6YRXbCu2XjxAVA26TOcR-1q9WVHFbkF9B5boL2JyecsW-VvokagDMnQ_dFshluRddnUSFhJoy07Vq25bT8XMM0psxeFmv8Vc9t6l3JiCdblZsT8bRHVFxUuD2zkZVmTKNXuiac_l2Y3-EIFXdqMohToG-9OEeg7rgTGXIRr51W3Jmsev4-U7e7Z0JT6GoEBzVtwr_YwX0mtiKOHztBE6UMFSuVP6OM-6ki3H-AqP4-qTrJeb9hhdIuvvP0P2zNUoUUDRbXM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+</div>
+</div>
+<div class="space-y-6">
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-text-secondary tracking-widest uppercase">Entity ID</label>
+<input class="w-full px-3 py-2 bg-surface border border-border rounded focus:ring-2 focus:ring-primary focus:outline-none transition-all font-mono text-sm" type="text" value="FB-X90-CORE-ASSET"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-text-secondary tracking-widest uppercase">Namespace</label>
+<div class="flex items-center gap-2 p-2 border border-border rounded cursor-pointer hover:bg-surface transition-colors">
+<span class="material-symbols-outlined text-[16px] text-text-secondary">folder_open</span>
+<span class="text-sm">root/prod/v2</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-text-secondary tracking-widest uppercase">Schema Version</label>
+<div class="flex items-center gap-2 p-2 border border-border rounded cursor-pointer hover:bg-surface transition-colors">
+<span class="material-symbols-outlined text-[16px] text-text-secondary">history</span>
+<span class="text-sm">4.0.12-rev</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-caps text-[10px] text-text-secondary tracking-widest uppercase">Execution Logic</label>
+<div class="bg-surface-container-highest rounded border border-border p-4 font-mono text-[13px] leading-relaxed">
+<span class="text-primary">if</span> (node.load &gt; 80) { <br/>
+                              engine.<span class="text-tertiary">rebalance</span>(entity); <br/>
+                              <span class="text-text-secondary">// optimize shard distribution</span> <br/>
+                            } <span class="text-primary">else</span> { <br/>
+                              entity.<span class="text-tertiary">keepAlive</span>(); <br/>
+                            }
+                        </div>
+</div>
+<div class="space-y-4">
+<h3 class="font-label-caps text-[11px] text-text-secondary tracking-widest uppercase border-b border-border pb-2">Collaborators</h3>
+<div class="flex -space-x-2">
+<img alt="User" class="inline-block h-8 w-8 rounded-full ring-2 ring-white" data-alt="Close up professional headshot of a developer in a minimalist white background environment. Low contrast, corporate modern lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAK4PpcffRHPotP2SgWbP228j943PNhWFnKO5GCyUjh2kGRD1tc41XT6Ox3VlrPFG8eXYXZ7SSvUk8K3z8OhMABRyeR3w8v4dSC_TdaOJywJyI4Ua-h-gZrHbrucqkVuWZOfFrkKDJnZ_IyjvIc0X9R5QH4WcrP7NEk_s4SoDfJBrbZadJdaawfGT4zGxBsPjma7_guMHrY4lZGBkXflKR1kZqJy4_SSyqQZjKjS6He6Ty4xCGs2DieOibyRl0S1n8i_VMfrHafjA"/>
+<img alt="User" class="inline-block h-8 w-8 rounded-full ring-2 ring-white" data-alt="Close up professional headshot of a technical manager in a minimalist white background environment. Low contrast, corporate modern lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCB67t48njfYUKBuVsKhRtt-o3V8iIWZgmdqS-unDLiZURVdBJsT58JS_HhSHleh38oBdsTputBwbL3gp6_nR-xIMK2jHE2ywvmTt8L3gVFD4jp7_o9I0XpIpX9ldrvBC1mHbUa470DyF7is4ANkIxgvoveca8l6GrpZyitduseFp9FI39ZtzALxrpC9Ty5LcFmkrgZ0EycDoe1KfB7fhfgPNTlBiImRM0xCRAn_WZM1fhyjSRyAhrSw1b50V6VUsN1aDzQCp2YsBE"/>
+<img alt="User" class="inline-block h-8 w-8 rounded-full ring-2 ring-white" data-alt="Close up professional headshot of a system architect in a minimalist white background environment. Low contrast, corporate modern lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgEBvCfb9OcEZoEKaqi4Tab_NUJM9-L8W03KdQEnmCyxeG9CUnGNFd8P7X1LQ9WX4VLZJ3apvuU32aLuE1puMbPIxWn0B3RYUV64l6Ziz4ntLaaxKYHwbSscQM8wjESJi0t1K1sOqwQlKUVJKHBQrPMSNA3R81b3vD_iqHlMPnL6DyBXhxSCuADnsvHc7SrqVNRWUocltuKFW2m_dGFUtIndsDvz9lxA12xamsVvd_-YaWB8xhl2yJXo7wukUtKWiw8_WnHeZTGPE"/>
+<div class="h-8 w-8 rounded-full bg-surface-container-high ring-2 ring-white flex items-center justify-center text-[10px] font-bold">+4</div>
+</div>
+</div>
+</div>
+</div>
+<div class="p-6 border-t border-border bg-surface-container-low flex gap-3">
+<button class="flex-grow py-2 bg-primary text-white font-medium rounded hover:opacity-90 transition-opacity">Deploy Changes</button>
+<button class="px-4 py-2 border border-border bg-white text-text-secondary rounded hover:text-text-primary transition-colors">Discard</button>
+</div>
+</div>
+<!-- Footer / Status Bar -->
+<footer class="h-8 bg-surface-container-low border-t border-border flex items-center px-margin-page justify-between shrink-0">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+<span class="font-label-caps text-[9px] text-text-secondary uppercase">All Systems Nominal</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-text-secondary">cloud_done</span>
+<span class="font-label-caps text-[9px] text-text-secondary uppercase">Cloud Synced</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-caps text-[9px] text-text-secondary uppercase">UTF-8</span>
+<span class="font-label-caps text-[9px] text-text-secondary uppercase">Ln 142, Col 8</span>
+</div>
+</footer>
+</main>
+<script>
+        function toggleSidePanel(show, title = 'Entity Editor') {
+            const panel = document.getElementById('sidePanel');
+            const panelTitle = document.getElementById('panelTitle');
+            
+            if (show) {
+                panelTitle.innerText = title;
+                panel.classList.remove('translate-x-full');
+            } else {
+                panel.classList.add('translate-x-full');
+            }
+        }
+
+        // Keyboard shortcuts for a technical feel
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                toggleSidePanel(false);
+            }
+        });
+
+        // Initialize micro-interactions
+        document.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                // Potential for adding subtle sound effects or canvas highlights
+            });
+        });
+    </script>
+</body></html>

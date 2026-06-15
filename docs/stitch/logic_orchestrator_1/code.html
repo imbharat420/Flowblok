@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok | Enterprise Workflow Canvas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d4e5f5",
+                        "secondary-container": "#d7e1ec",
+                        "surface-dim": "#d9dadb",
+                        "on-surface-variant": "#3c4948",
+                        "on-primary-container": "#003f3d",
+                        "surface-container": "#edeeef",
+                        "on-primary-fixed": "#00201f",
+                        "on-secondary-container": "#5a646d",
+                        "primary-fixed-dim": "#4fdad7",
+                        "primary-container": "#00b3b0",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-bright": "#f8f9fa",
+                        "secondary-fixed-dim": "#bec7d2",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e1e3e4",
+                        "background": "#f8f9fa",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#3f4851",
+                        "tertiary-fixed-dim": "#b8c8d8",
+                        "outline": "#6c7a79",
+                        "on-tertiary-fixed-variant": "#394955",
+                        "primary": "#006a68",
+                        "surface-container-high": "#e7e8e9",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#00504e",
+                        "secondary": "#565f69",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#0d1d29",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#dae3ee",
+                        "tertiary-container": "#93a3b2",
+                        "on-surface": "#191c1d",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#71f7f3",
+                        "on-secondary-fixed": "#131d24",
+                        "surface-container-low": "#f3f4f5",
+                        "inverse-primary": "#4fdad7",
+                        "on-error": "#ffffff",
+                        "surface-tint": "#006a68",
+                        "on-background": "#191c1d",
+                        "outline-variant": "#bbc9c8",
+                        "on-tertiary-container": "#2a3946",
+                        "inverse-on-surface": "#f0f1f2",
+                        "tertiary": "#50606e",
+                        "inverse-surface": "#2e3132",
+                        "surface": "#f8f9fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "container-max": "1280px",
+                        "sm": "8px",
+                        "sidebar-width": "260px",
+                        "xs": "4px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .grid-pattern {
+            background-image: radial-gradient(circle, #bbc9c8 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .canvas-container {
+            cursor: grab;
+        }
+        .canvas-container:active {
+            cursor: grabbing;
+        }
+        .connection-line {
+            fill: none;
+            stroke: #00b3b0;
+            stroke-width: 2;
+            stroke-dasharray: 4;
+            animation: flow 20s linear infinite;
+        }
+        @keyframes flow {
+            from { stroke-dashoffset: 200; }
+            to { stroke-dashoffset: 0; }
+        }
+        .node-socket {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #006a68;
+            position: absolute;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-hidden h-screen flex flex-col">
+<!-- Top Navigation -->
+<header class="h-16 w-full flex items-center border-b border-outline-variant bg-surface/80 backdrop-blur-md sticky top-0 z-30 px-gutter justify-between">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-bold text-primary">DX OS</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors" href="#">Project</a>
+<span class="text-outline-variant">/</span>
+<span class="text-primary font-bold border-b-2 border-primary pb-1 font-label-md text-label-md">Current Page</span>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 font-body-sm" placeholder="Search commands..." type="text"/>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                Run
+            </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-secondary text-on-secondary rounded-lg font-label-md text-label-md hover:opacity-80 transition-opacity">
+                Deploy
+            </button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">notifications</span>
+<img alt="User Profile" class="h-8 w-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvztspJJqD6Xs6C_8FaAiaEvZBK4KrJyVjcStsEm_GnXl4UQu_paqQx3oumaPuKcIvS7mxTC0fkoYt_44LcG3Kbc5DKD3aKy9U0M3T3WAmOxur0UKP6godNxMTldMq3hYhpD7Xtx5hQ7HQYdy2RoyPtCrj4SEdAUhkhcswJQKaiZOO4BZWasrcS9l_Sym2jFwewYBVNyTIXF2TAx9enYNaXmxQ8v_w1b7Kh3qFZyXX11HdZuKARJVY41BywbCjutElbMc2XvYJFDI"/>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-[260px] h-full flex flex-col border-r border-outline-variant bg-surface shrink-0">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined">hub</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary leading-tight">Flowblok</h2>
+<p class="text-xs text-on-surface-variant font-body-sm">v4.2 Enterprise</p>
+</div>
+</div>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg border-l-4 border-primary font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">description</span>
+                        Content
+                    </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">folder_shared</span>
+                        Assets
+                    </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">api</span>
+                        APIs
+                    </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        Settings
+                    </a>
+</div>
+</div>
+<div class="mt-auto p-6 border-t border-outline-variant space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+                    Profile
+                </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">help</span>
+                    Help
+                </a>
+</div>
+</aside>
+<!-- Main Content Area / Canvas -->
+<main class="flex-1 relative overflow-hidden bg-background grid-pattern flex flex-col">
+<!-- Toolbar Overlay -->
+<div class="absolute top-6 left-6 z-20 flex flex-col gap-2">
+<div class="bg-surface border border-outline-variant rounded-xl shadow-sm p-2 flex flex-col gap-1">
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant" title="Add Trigger">
+<span class="material-symbols-outlined">ads_click</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant" title="Add Action">
+<span class="material-symbols-outlined">bolt</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant" title="Add Condition">
+<span class="material-symbols-outlined">alt_route</span>
+</button>
+<div class="h-px bg-outline-variant mx-1 my-1"></div>
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant" title="Hand Tool">
+<span class="material-symbols-outlined">pan_tool</span>
+</button>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl shadow-sm p-2 flex flex-col gap-1">
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant">
+<span class="material-symbols-outlined">zoom_out</span>
+</button>
+<div class="text-[10px] text-center font-bold text-outline">100%</div>
+</div>
+</div>
+<!-- Canvas Viewport -->
+<div class="flex-1 w-full h-full relative canvas-container overflow-auto p-32" id="canvas">
+<!-- SVG Connections Layer -->
+<svg class="absolute top-0 left-0 w-[2000px] h-[2000px] pointer-events-none" id="connections">
+<!-- Dynamic curved paths would be generated here -->
+<path class="connection-line" d="M 380 240 C 480 240, 480 140, 580 140"></path>
+<path class="connection-line" d="M 380 240 C 480 240, 480 340, 580 340"></path>
+<path class="connection-line" d="M 820 140 C 920 140, 920 240, 1020 240"></path>
+</svg>
+<!-- Workflow Nodes -->
+<!-- Node 1: Trigger -->
+<div class="absolute top-[180px] left-[100px] w-72 bg-surface border-2 border-primary rounded-xl shadow-lg p-5 group hover:border-primary-container transition-all">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">ads_click</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-primary">Webhook Trigger</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant cursor-grab">drag_indicator</span>
+</div>
+<div class="space-y-3">
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant">
+<p class="text-[10px] uppercase text-outline mb-1 font-bold">Endpoint</p>
+<p class="font-code-md text-code-md truncate text-secondary">/api/v1/ingest/flow-782</p>
+</div>
+</div>
+<!-- Sockets -->
+<div class="node-socket -right-[6px] top-1/2 -translate-y-1/2"></div>
+</div>
+<!-- Node 2: Logic Split -->
+<div class="absolute top-[80px] left-[580px] w-64 bg-surface border border-outline-variant rounded-xl shadow-md p-5">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-secondary text-[20px]">filter_list</span>
+<span class="font-label-md text-label-md text-on-surface">Data Transform</span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant mb-4">
+<p class="text-xs font-body-sm text-secondary italic">Normalize JSON payload to Schema V2</p>
+</div>
+<!-- Sockets -->
+<div class="node-socket -left-[6px] top-1/2 -translate-y-1/2"></div>
+<div class="node-socket -right-[6px] top-1/2 -translate-y-1/2"></div>
+</div>
+<!-- Node 3: Condition -->
+<div class="absolute top-[280px] left-[580px] w-64 bg-surface border border-outline-variant rounded-xl shadow-md p-5">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-error text-[20px]">warning</span>
+<span class="font-label-md text-label-md text-on-surface">Error Handler</span>
+</div>
+<div class="flex items-center justify-between p-2 bg-error-container/30 rounded border border-error/20">
+<span class="text-xs font-medium text-error">Retry count &gt; 3</span>
+<span class="material-symbols-outlined text-[16px] text-error">chevron_right</span>
+</div>
+<!-- Sockets -->
+<div class="node-socket -left-[6px] top-1/2 -translate-y-1/2"></div>
+<div class="node-socket -right-[6px] top-1/2 -translate-y-1/2"></div>
+</div>
+<!-- Node 4: Action -->
+<div class="absolute top-[180px] left-[1020px] w-72 bg-surface border-2 border-secondary rounded-xl shadow-lg p-5">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-secondary text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-secondary">External API Push</span>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between text-xs font-body-sm px-2">
+<span class="text-outline">Target</span>
+<span class="text-on-surface">Production Sync</span>
+</div>
+<div class="flex items-center justify-between text-xs font-body-sm px-2">
+<span class="text-outline">Timeout</span>
+<span class="text-on-surface">5000ms</span>
+</div>
+</div>
+<!-- Sockets -->
+<div class="node-socket -left-[6px] top-1/2 -translate-y-1/2"></div>
+</div>
+</div>
+<!-- Execution Log Terminal -->
+<div class="bg-inverse-surface text-on-tertiary-fixed font-code-md transition-all duration-300 h-12 flex flex-col" id="terminal">
+<!-- Header -->
+<div class="h-12 px-6 flex items-center justify-between cursor-pointer border-t border-outline/30" onclick="toggleTerminal()">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-fixed-dim animate-pulse"></span>
+<span class="text-xs font-bold uppercase tracking-widest text-on-tertiary-fixed">Live Execution Log</span>
+</div>
+<span class="text-[10px] text-on-tertiary-fixed-variant">3 ERRORS | 14 WARNINGS | 2.4s Latency</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[20px]" id="terminal-toggle-icon">keyboard_arrow_up</span>
+</div>
+</div>
+<!-- Content -->
+<div class="flex-1 overflow-y-auto px-6 py-4 bg-black/20 text-xs space-y-2 font-code-md">
+<div class="flex gap-4">
+<span class="text-outline-variant">[14:22:01]</span>
+<span class="text-primary-fixed-dim">INFO</span>
+<span>Workflow 'Sync_Prod_v2' initialized.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-outline-variant">[14:22:02]</span>
+<span class="text-primary-fixed-dim">INFO</span>
+<span>Connection established to Webhook #782</span>
+</div>
+<div class="flex gap-4">
+<span class="text-outline-variant">[14:22:05]</span>
+<span class="text-error">ERROR</span>
+<span class="text-error-container">Data transformation failed: Unexpected token 'U' in JSON at position 12. Retrying...</span>
+</div>
+<div class="flex gap-4">
+<span class="text-outline-variant">[14:22:06]</span>
+<span class="text-primary-fixed-dim">INFO</span>
+<span>Retry 1/3 successful. Payload normalized.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-outline-variant">[14:22:08]</span>
+<span class="text-on-tertiary-fixed">SUCCESS</span>
+<span>External API Push completed (200 OK) in 142ms</span>
+</div>
+<div class="flex gap-4 opacity-50">
+<span class="text-outline-variant">[14:22:10]</span>
+<span class="text-primary-fixed-dim">DEBUG</span>
+<span>Garbage collection: freed 12.4kb in heap.</span>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Footer Information -->
+<footer class="w-full flex justify-between items-center bg-surface-container px-8 py-2 border-t border-outline-variant z-40">
+<div class="flex gap-4 items-center">
+<span class="font-label-md text-primary text-xs">© 2024 DX OS. Flowblok Module.</span>
+<div class="h-4 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant">System Ready</span>
+</div>
+</div>
+<div class="flex gap-6">
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Support</a>
+</div>
+</footer>
+<script>
+        let terminalExpanded = false;
+        const terminal = document.getElementById('terminal');
+        const icon = document.getElementById('terminal-toggle-icon');
+
+        function toggleTerminal() {
+            terminalExpanded = !terminalExpanded;
+            if (terminalExpanded) {
+                terminal.style.height = '280px';
+                icon.innerText = 'keyboard_arrow_down';
+            } else {
+                terminal.style.height = '3rem';
+                icon.innerText = 'keyboard_arrow_up';
+            }
+        }
+
+        // Lightweight Panning Interaction Simulation
+        const canvas = document.getElementById('canvas');
+        let isDown = false;
+        let startX;
+        let startY;
+        let scrollLeft;
+        let scrollTop;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - canvas.offsetLeft;
+            startY = e.pageY - canvas.offsetTop;
+            scrollLeft = canvas.scrollLeft;
+            scrollTop = canvas.scrollTop;
+        });
+        canvas.addEventListener('mouseleave', () => {
+            isDown = false;
+        });
+        canvas.addEventListener('mouseup', () => {
+            isDown = false;
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if(!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - canvas.offsetLeft;
+            const y = e.pageY - canvas.offsetTop;
+            const walkX = (x - startX);
+            const walkY = (y - startY);
+            canvas.scrollLeft = scrollLeft - walkX;
+            canvas.scrollTop = scrollTop - walkY;
+        });
+    </script>
+</body></html>

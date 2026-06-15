@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok OS | Logic Orchestrator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        /* Custom Grid Canvas */
+        .grid-canvas {
+            background-color: #080808;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90px, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .bezier-connection {
+            fill: none;
+            stroke-width: 2;
+            filter: drop-shadow(0 0 4px rgba(0, 215, 34, 0.4));
+        }
+        .node-card {
+            backdrop-filter: blur(8px);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444748;
+            border-radius: 2px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "accent-blue-info": "#146ef5",
+                      "surface-container-low": "#f7f3f2",
+                      "body-mid": "#5a5a5a",
+                      "on-tertiary-fixed-variant": "#494645",
+                      "on-secondary-fixed-variant": "#454747",
+                      "on-primary-container": "#858383",
+                      "accent-pink": "#ed52cb",
+                      "outline": "#747878",
+                      "surface": "#fdf8f8",
+                      "on-primary-fixed": "#1c1b1b",
+                      "secondary": "#5d5f5f",
+                      "tertiary-fixed": "#e7e1df",
+                      "secondary-fixed": "#e2e2e2",
+                      "secondary-container": "#dfe0e0",
+                      "mute-soft": "#ababab",
+                      "on-tertiary": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#c4c7c7",
+                      "on-secondary": "#ffffff",
+                      "body": "#363636",
+                      "on-error": "#ffffff",
+                      "surface-variant": "#e5e2e1",
+                      "accent-blue-deep": "#006acc",
+                      "surface-container": "#f1edec",
+                      "on-background": "#1c1b1b",
+                      "on-primary-fixed-variant": "#474646",
+                      "tertiary": "#000000",
+                      "primary-container": "#1c1b1b",
+                      "tertiary-fixed-dim": "#cac5c3",
+                      "on-surface": "#1c1b1b",
+                      "inverse-primary": "#c9c6c5",
+                      "on-tertiary-fixed": "#1d1b1a",
+                      "on-secondary-fixed": "#1a1c1c",
+                      "mute": "#898989",
+                      "secondary-fixed-dim": "#c6c6c7",
+                      "primary": "#000000",
+                      "ink-strong": "#222222",
+                      "inverse-surface": "#313030",
+                      "surface-container-highest": "#e5e2e1",
+                      "on-surface-variant": "#444748",
+                      "accent-red": "#ee1d36",
+                      "error": "#ba1a1a",
+                      "tertiary-container": "#1d1b1a",
+                      "hairline": "#d8d8d8",
+                      "on-tertiary-container": "#878381",
+                      "surface-tint": "#5f5e5e",
+                      "primary-fixed-dim": "#c9c6c5",
+                      "accent-blue": "#3b89ff",
+                      "inverse-on-surface": "#f4f0ef",
+                      "surface-bright": "#fdf8f8",
+                      "canvas": "#ffffff",
+                      "accent-orange": "#ff6b00",
+                      "on-error-container": "#93000a",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#ebe7e6",
+                      "background": "#fdf8f8",
+                      "on-secondary-container": "#616363",
+                      "accent-purple": "#7a3dff",
+                      "accent-green": "#00d722",
+                      "accent-yellow": "#ffae13",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-dim": "#ddd9d8",
+                      "primary-fixed": "#e5e2e1"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "xl": "20px",
+                      "gutter": "32px",
+                      "3xl": "32px",
+                      "xxs": "2px",
+                      "lg": "16px",
+                      "2xl": "24px",
+                      "xs": "4px",
+                      "md": "12px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "caption-mono": ["JetBrains Mono"],
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-sm": ["Inter"],
+                      "eyebrow-uppercase": ["Inter"],
+                      "display-xs": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-md": ["Inter"],
+                      "display-xxl": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "display-xl": ["Inter"],
+                      "caption": ["Inter"]
+              },
+              "fontSize": {
+                      "caption-mono": ["12px", {"lineHeight": "18px", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "22.4px", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "25.6px", "letterSpacing": "-0.16px", "fontWeight": "400"}],
+                      "display-sm": ["24px", {"lineHeight": "31.2px", "letterSpacing": "0", "fontWeight": "500"}],
+                      "eyebrow-uppercase": ["15px", {"lineHeight": "19.5px", "letterSpacing": "1.5px", "fontWeight": "500"}],
+                      "display-xs": ["20px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "500"}],
+                      "body-lg": ["28.8px", {"lineHeight": "46.08px", "letterSpacing": "-0.288px", "fontWeight": "400"}],
+                      "display-md": ["32px", {"lineHeight": "41.6px", "letterSpacing": "0", "fontWeight": "500"}],
+                      "display-xxl": ["80px", {"lineHeight": "83.2px", "letterSpacing": "-0.8px", "fontWeight": "600"}],
+                      "display-lg": ["44.8px", {"lineHeight": "46.6px", "letterSpacing": "0", "fontWeight": "600"}],
+                      "display-xl": ["56px", {"lineHeight": "58.24px", "letterSpacing": "0", "fontWeight": "600"}],
+                      "caption": ["12.8px", {"lineHeight": "15.36px", "letterSpacing": "0", "fontWeight": "550"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="h-full overflow-hidden flex flex-col bg-[#080808]">
+<!-- Top Bar Navigation (Shared Component Integration) -->
+<header class="fixed top-0 w-full z-50 bg-[#080808] text-white border-b border-white/10 flex justify-between items-center px-gutter h-16 w-full">
+<div class="flex items-center space-x-lg">
+<span class="font-display-xs text-display-xs font-semibold text-white tracking-tight">Flowblok OS</span>
+<div class="h-4 w-[1px] bg-white/20"></div>
+<div class="flex items-center space-x-sm font-body-sm text-body-sm font-medium text-white/60">
+<span>Projects</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-white">Project Alpha</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-white">logic_orchestrator.fb</span>
+</div>
+</div>
+<div class="flex items-center space-x-md">
+<button class="flex items-center space-x-xs px-md py-xs font-body-sm text-body-sm font-medium text-white/80 hover:text-white transition-colors duration-200">
+<span class="material-symbols-outlined text-[20px]">play_arrow</span>
+<span>Preview</span>
+</button>
+<button class="bg-white text-[#080808] px-xl py-xs rounded-lg font-body-sm text-body-sm font-semibold hover:bg-white/90 transition-opacity">
+                Deploy
+            </button>
+<div class="h-4 w-[1px] bg-white/20 mx-xs"></div>
+<div class="flex items-center space-x-md">
+<span class="material-symbols-outlined text-white/60 cursor-pointer hover:text-white">notifications</span>
+<span class="material-symbols-outlined text-white/60 cursor-pointer hover:text-white">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Sidebar Navigation (Shared Component Integration) -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 border-r border-white/10 flex flex-col py-lg bg-[#080808] z-40">
+<div class="px-gutter mb-lg">
+<div class="flex items-center space-x-md p-sm rounded-lg bg-white/5 border border-white/10">
+<div class="w-8 h-8 rounded bg-accent-blue-info flex items-center justify-center text-white">A</div>
+<div class="overflow-hidden">
+<p class="font-body-sm text-body-sm font-semibold text-white truncate">Project Alpha</p>
+<p class="font-caption text-caption text-white/40 truncate">Production</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-xs px-sm">
+<a class="flex items-center space-x-md px-md py-sm rounded-lg bg-white/5 text-white font-semibold border-r-2 border-white transition-all scale-[0.98]" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-sm text-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center space-x-md px-md py-sm rounded-lg text-white/40 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-sm text-body-sm">Content</span>
+</a>
+<a class="flex items-center space-x-md px-md py-sm rounded-lg text-white/40 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-body-sm text-body-sm">Assets</span>
+</a>
+<a class="flex items-center space-x-md px-md py-sm rounded-lg text-white/40 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">api</span>
+<span class="font-body-sm text-body-sm">APIs</span>
+</a>
+<a class="flex items-center space-x-md px-md py-sm rounded-lg text-white/40 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+</nav>
+<div class="px-sm pt-md mt-auto border-t border-white/10">
+<a class="flex items-center space-x-md px-md py-sm rounded-lg text-white/40 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-body-sm text-body-sm">Support</span>
+</a>
+<a class="flex items-center space-x-md px-md py-sm rounded-lg text-white/40 hover:bg-white/5 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined">chat_bubble_outline</span>
+<span class="font-body-sm text-body-sm">Feedback</span>
+</a>
+</div>
+</aside>
+<!-- Main Canvas Area -->
+<main class="flex-1 ml-64 mt-16 relative overflow-hidden grid-canvas">
+<!-- SVG Connections Layer -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-10">
+<!-- Connection 1 to 2 -->
+<path class="bezier-connection stroke-accent-green" d="M 180,240 C 260,240 260,320 340,320"></path>
+<!-- Connection 2 to 3 -->
+<path class="bezier-connection stroke-accent-green" d="M 620,320 C 700,320 700,240 780,240"></path>
+<!-- Animated Flow Particles -->
+<circle fill="#00d722" r="3">
+<animatemotion dur="2s" path="M 180,240 C 260,240 260,320 340,320" repeatcount="indefinite"></animatemotion>
+</circle>
+<circle fill="#00d722" r="3">
+<animatemotion dur="2s" path="M 620,320 C 700,320 700,240 780,240" repeatcount="indefinite"></animatemotion>
+</circle>
+</svg>
+<!-- Logic Nodes -->
+<div class="absolute inset-0 z-20">
+<!-- Webhook Trigger Node (Accent Purple) -->
+<div class="absolute top-40 left-40 w-64 bg-[#121212] border border-accent-purple/50 rounded-xl overflow-hidden node-card shadow-2xl">
+<div class="bg-accent-purple/20 px-md py-sm flex justify-between items-center border-b border-accent-purple/30">
+<div class="flex items-center space-x-sm">
+<span class="material-symbols-outlined text-accent-purple" style="font-size: 18px;">webhook</span>
+<span class="font-body-sm text-body-sm font-semibold text-white">Webhook Trigger</span>
+</div>
+<span class="material-symbols-outlined text-white/40" style="font-size: 16px;">more_vert</span>
+</div>
+<div class="p-md space-y-md">
+<div>
+<label class="font-caption text-caption text-white/40 block mb-xs uppercase tracking-widest">URL PATH</label>
+<div class="font-caption-mono text-caption-mono text-accent-purple">/api/v1/user-signup</div>
+</div>
+<div class="flex justify-end">
+<div class="w-3 h-3 rounded-full bg-accent-green border-2 border-[#080808]"></div>
+</div>
+</div>
+</div>
+<!-- Data Transform Node (Accent Blue) -->
+<div class="absolute top-64 left-[420px] w-72 bg-[#121212] border border-accent-blue/50 rounded-xl overflow-hidden node-card shadow-2xl">
+<div class="bg-accent-blue/20 px-md py-sm flex justify-between items-center border-b border-accent-blue/30">
+<div class="flex items-center space-x-sm">
+<span class="material-symbols-outlined text-accent-blue" style="font-size: 18px;">analytics</span>
+<span class="font-body-sm text-body-sm font-semibold text-white">Data Transform</span>
+</div>
+<span class="material-symbols-outlined text-white/40" style="font-size: 16px;">more_vert</span>
+</div>
+<div class="p-md">
+<div class="flex justify-between items-start mb-md">
+<div class="w-3 h-3 rounded-full bg-accent-green border-2 border-[#080808]"></div>
+<div class="flex-1 px-md">
+<label class="font-caption text-caption text-white/40 block mb-xs uppercase tracking-widest">MAPPER</label>
+<div class="bg-black/40 p-sm rounded border border-white/10 font-caption-mono text-caption-mono text-white/80">
+                                { "user_id": $.id }
+                            </div>
+</div>
+<div class="w-3 h-3 rounded-full bg-accent-green border-2 border-[#080808]"></div>
+</div>
+</div>
+</div>
+<!-- Email Node (Accent Pink) -->
+<div class="absolute top-40 left-[840px] w-64 bg-[#121212] border border-accent-pink/50 rounded-xl overflow-hidden node-card shadow-2xl">
+<div class="bg-accent-pink/20 px-md py-sm flex justify-between items-center border-b border-accent-pink/30">
+<div class="flex items-center space-x-sm">
+<span class="material-symbols-outlined text-accent-pink" style="font-size: 18px;">mail</span>
+<span class="font-body-sm text-body-sm font-semibold text-white">Send Email</span>
+</div>
+<span class="material-symbols-outlined text-white/40" style="font-size: 16px;">more_vert</span>
+</div>
+<div class="p-md space-y-md">
+<div class="flex items-start">
+<div class="w-3 h-3 rounded-full bg-accent-green border-2 border-[#080808] mt-1 mr-md"></div>
+<div class="flex-1">
+<label class="font-caption text-caption text-white/40 block mb-xs uppercase tracking-widest">TEMPLATE</label>
+<div class="font-body-sm text-body-sm text-white">Welcome Onboard</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Canvas Controls -->
+<div class="absolute bottom- gutter right-gutter flex space-x-sm z-30 mb- gutter mr-gutter">
+<div class="bg-[#121212] border border-white/10 rounded-lg flex overflow-hidden shadow-xl">
+<button class="p-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors border-r border-white/10">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="p-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors border-r border-white/10">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<button class="p-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined">center_focus_strong</span>
+</button>
+</div>
+<button class="bg-accent-blue text-white p-sm rounded-lg shadow-xl hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">layers</span>
+</button>
+</div>
+</main>
+<!-- Bottom Console Console Terminal -->
+<section class="fixed bottom-0 left-64 right-0 h-48 bg-[#0a0a0a] border-t border-white/10 z-50 flex flex-col transform transition-transform duration-300 translate-y-0" id="console">
+<div class="flex justify-between items-center px-md py-sm bg-[#121212] border-b border-white/5">
+<div class="flex items-center space-x-md">
+<span class="font-caption text-caption text-white/80 flex items-center">
+<span class="w-2 h-2 rounded-full bg-accent-green mr-sm animate-pulse"></span>
+                    LOGS LIVE
+                </span>
+<span class="text-white/20">|</span>
+<div class="flex space-x-md font-caption text-caption text-white/40">
+<span class="hover:text-white cursor-pointer">Requests</span>
+<span class="hover:text-white cursor-pointer text-white">System</span>
+<span class="hover:text-white cursor-pointer">Errors</span>
+</div>
+</div>
+<div class="flex items-center space-x-md">
+<span class="material-symbols-outlined text-white/40 cursor-pointer hover:text-white" onclick="document.getElementById('console').classList.toggle('translate-y-40')">keyboard_arrow_down</span>
+<span class="material-symbols-outlined text-white/40 cursor-pointer hover:text-white">close</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-md font-caption-mono text-caption-mono space-y-xs" id="terminal-content">
+<div class="flex space-x-md">
+<span class="text-white/20">[14:20:01]</span>
+<span class="text-accent-purple">POST</span>
+<span class="text-white/80">/api/v1/user-signup initiated...</span>
+</div>
+<div class="flex space-x-md">
+<span class="text-white/20">[14:20:02]</span>
+<span class="text-accent-blue">TRANSFORM</span>
+<span class="text-white/80">Input schema validated. Payload:</span>
+</div>
+<div class="pl-24 text-accent-green/80">
+                { "id": "uuid_78921", "email": "dev@flowblok.io", "tier": "enterprise" }
+            </div>
+<div class="flex space-x-md">
+<span class="text-white/20">[14:20:02]</span>
+<span class="text-accent-pink">MAIL</span>
+<span class="text-white/80">Queuing 'Welcome' template for recipient...</span>
+</div>
+<div class="flex space-x-md">
+<span class="text-white/20">[14:20:03]</span>
+<span class="text-accent-green">SUCCESS</span>
+<span class="text-white/80">Workflow completed in 242ms.</span>
+</div>
+</div>
+</section>
+<!-- Context Menu Logic (Interactive Demo Placeholder) -->
+<script>
+        // Micro-interaction for the terminal
+        const terminalContent = document.getElementById('terminal-content');
+        const logs = [
+            { type: 'POST', color: 'text-accent-purple', msg: 'Incoming request on endpoint /webhook/stripe-prod' },
+            { type: 'DATA', color: 'text-accent-blue', msg: 'Normalizing JSON payload structure' },
+            { type: 'EXEC', color: 'text-white/80', msg: 'Running local logic script "calculate_tax.js"' },
+            { type: 'INFO', color: 'text-accent-yellow', msg: 'Retrying external API connection (Attempt 1/3)' }
+        ];
+
+        setInterval(() => {
+            const log = logs[Math.floor(Math.random() * logs.length)];
+            const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            const line = document.createElement('div');
+            line.className = 'flex space-x-md animate-pulse';
+            line.innerHTML = `<span class="text-white/20">[${time}]</span><span class="${log.color}">${log.type}</span><span class="text-white/80">${log.msg}</span>`;
+            terminalContent.appendChild(line);
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+            if (terminalContent.children.length > 20) terminalContent.removeChild(terminalContent.firstChild);
+            setTimeout(() => line.classList.remove('animate-pulse'), 1000);
+        }, 4000);
+    </script>
+<!-- Footer (Shared Component Integration - Hidden as per Transactional/Task Rule) -->
+<!-- The Footer is suppressed to maximize the Infinite Canvas view for the complex orchestrator task. -->
+</body></html>

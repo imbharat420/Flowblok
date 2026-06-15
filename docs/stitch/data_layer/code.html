@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok OS | Data Layer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2e3039",
+                        "surface-container-high": "#e7e7f3",
+                        "on-surface-variant": "#434655",
+                        "on-primary": "#ffffff",
+                        "outline": "#737686",
+                        "on-error-container": "#93000a",
+                        "dark-canvas": "#0A0A0A",
+                        "primary": "#004ac6",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "outline-variant": "#c3c6d7",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "tertiary-container": "#bc4800",
+                        "canvas": "#FFFFFF",
+                        "surface-container-low": "#f3f3fe",
+                        "on-tertiary-container": "#ffede6",
+                        "on-secondary-container": "#656464",
+                        "surface-bright": "#faf8ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#191b23",
+                        "surface-variant": "#e1e2ed",
+                        "on-primary-container": "#eeefff",
+                        "inverse-primary": "#b4c5ff",
+                        "secondary-fixed": "#e5e2e1",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#191b23",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface-container-highest": "#e1e2ed",
+                        "on-error": "#ffffff",
+                        "text-primary": "#111111",
+                        "on-tertiary-fixed": "#360f00",
+                        "border": "#EEEEEE",
+                        "tertiary": "#943700",
+                        "surface-container": "#ededf9",
+                        "primary-container": "#2563eb",
+                        "text-secondary": "#666666",
+                        "surface-tint": "#0053db",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#e5e2e1",
+                        "surface": "#FAFAFA",
+                        "background": "#faf8ff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-secondary-fixed-variant": "#474646",
+                        "secondary": "#5f5e5e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "max-width": "1200px",
+                        "margin-page": "40px",
+                        "base": "8px",
+                        "section-v": "120px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-medium": ["Inter"],
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "display": ["72px", {"lineHeight": "0.95", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "label-sm": ["13px", {"lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                        "body-medium": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "headline": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #FFFFFF;
+            color: #111111;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #EEEEEE;
+            border-radius: 2px;
+        }
+        .mono-header {
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 11px;
+            color: #666666;
+        }
+        .canvas-bg {
+            background-color: #FFFFFF;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full h-[56px] flex items-center justify-between px-margin-page bg-canvas border-b border-border z-50">
+<div class="flex items-center gap-base">
+<span class="font-headline text-[20px] font-extrabold text-text-primary tracking-tight">Flowblok OS</span>
+<div class="h-4 w-[1px] bg-border mx-2"></div>
+<span class="font-label-caps text-label-caps text-text-secondary">Data Layer</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-text-secondary">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface border border-border rounded text-label-sm w-64 focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="Search commands..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-text-secondary">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">terminal</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">settings</span>
+<div class="w-8 h-8 rounded-full border border-border bg-surface flex items-center justify-center overflow-hidden">
+<img alt="User Avatar" class="w-full h-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOIoczf8h6LFfwxQACwfEfajNEs4-iPHvG_vxV-Zsxns-jU6U5YvICw269XOWk64KQG5OwI0ZXrlFdgdF5kS87RE7NLpks8SKgTZrLVD42NYHtOn4puI2xz09N5QoQ12gyqTcCZyxm3_jcQLsi_gKHqAyGNivpC-lVMjFMZUGrEipd4ENaPExX2rcBJfQuCDduQn30mKibc6eWdZRyIY0Eub214FWlGpb6cGd9ecmw_G4pfLBdIxXSo98di3mfZUTqTbeMoQg3W0U"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Container -->
+<main class="flex-1 mt-[56px] mb-[32px] flex overflow-hidden">
+<!-- SideNavBar (Schema Sidebar) -->
+<aside class="h-full w-64 flex flex-col py-8 px-4 gap-base border-r border-border bg-canvas overflow-y-auto custom-scrollbar">
+<div class="mb-4">
+<h3 class="font-label-caps text-label-caps text-text-secondary px-2 mb-2">Project Alpha</h3>
+<p class="font-label-sm text-[11px] text-text-secondary opacity-50 px-2 uppercase tracking-widest">v1.0.4-stable</p>
+</div>
+<nav class="flex flex-col gap-1">
+<div class="flex items-center gap-3 px-2 py-2 text-primary font-bold font-label-caps text-label-caps bg-surface-container-low rounded cursor-pointer group">
+<span class="material-symbols-outlined">space_dashboard</span>
+<span>Workspace</span>
+</div>
+<div class="flex items-center gap-3 px-2 py-2 text-text-secondary font-label-caps text-label-caps hover:bg-surface transition-all cursor-pointer group">
+<span class="material-symbols-outlined group-hover:text-primary">folder_open</span>
+<span>Explorer</span>
+</div>
+<div class="flex items-center gap-3 px-2 py-2 text-text-secondary font-label-caps text-label-caps hover:bg-surface transition-all cursor-pointer group">
+<span class="material-symbols-outlined group-hover:text-primary">bug_report</span>
+<span>Debugger</span>
+</div>
+<div class="flex items-center gap-3 px-2 py-2 text-text-secondary font-label-caps text-label-caps hover:bg-surface transition-all cursor-pointer group">
+<span class="material-symbols-outlined group-hover:text-primary">account_tree</span>
+<span>Source Control</span>
+</div>
+<div class="flex items-center gap-3 px-2 py-2 text-text-secondary font-label-caps text-label-caps hover:bg-surface transition-all cursor-pointer group">
+<span class="material-symbols-outlined group-hover:text-primary">extension</span>
+<span>Extensions</span>
+</div>
+</nav>
+<div class="mt-8">
+<div class="flex items-center justify-between px-2 mb-4">
+<h3 class="font-label-caps text-label-caps text-text-secondary">Collections</h3>
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary">add</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2 px-2 py-1.5 text-label-sm text-text-primary bg-surface border-l-2 border-primary cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+<span>Users</span>
+</div>
+<div class="flex items-center gap-2 px-2 py-1.5 text-label-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+<span>Inventory</span>
+</div>
+<div class="flex items-center gap-2 px-2 py-1.5 text-label-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+<span>Transactions</span>
+</div>
+<div class="flex items-center gap-2 px-2 py-1.5 text-label-sm text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+<span>Logs</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Center Table Canvas -->
+<section class="flex-1 flex flex-col bg-canvas overflow-hidden">
+<!-- Table Controls -->
+<div class="h-14 flex items-center justify-between px-8 border-b border-border">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-label-sm font-medium border-b-2 border-primary py-4 px-1 cursor-pointer">
+<span>All Users</span>
+<span class="text-[10px] bg-surface px-1.5 rounded border border-border">2.4k</span>
+</div>
+<div class="flex items-center gap-2 text-label-sm text-text-secondary py-4 px-1 cursor-pointer hover:text-text-primary transition-colors">
+<span>Beta Testers</span>
+</div>
+<div class="flex items-center gap-2 text-label-sm text-text-secondary py-4 px-1 cursor-pointer hover:text-text-primary transition-colors">
+<span>Inactive</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded text-label-sm font-medium hover:bg-white transition-all">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                        Filter
+                    </button>
+<button class="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded text-label-sm font-medium hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                        New Record
+                    </button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="flex-1 overflow-auto custom-scrollbar">
+<table class="w-full text-left border-collapse min-w-[800px]">
+<thead class="sticky top-0 bg-canvas z-10">
+<tr class="border-b border-border">
+<th class="p-4 w-12"><input class="rounded border-border text-primary focus:ring-primary" type="checkbox"/></th>
+<th class="p-4 mono-header">ID</th>
+<th class="p-4 mono-header">User Handle</th>
+<th class="p-4 mono-header">Status</th>
+<th class="p-4 mono-header">Created At</th>
+<th class="p-4 mono-header">Tier</th>
+<th class="p-4 mono-header">Storage</th>
+</tr>
+</thead>
+<tbody class="font-body text-label-sm divide-y divide-border">
+<!-- Row 1 -->
+<tr class="hover:bg-surface cursor-pointer group transition-colors" onclick="openContextPanel('USR-8821', '@alex_dev', 'Active')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-4 font-mono text-[13px] text-text-secondary">USR-8821</td>
+<td class="p-4 font-medium">@alex_dev</td>
+<td class="p-4">
+<span class="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-semibold uppercase">Active</span>
+</td>
+<td class="p-4 text-text-secondary">2024-03-12</td>
+<td class="p-4">
+<span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-primary"></div> Enterprise</span>
+</td>
+<td class="p-4 text-text-secondary">82%</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface cursor-pointer group transition-colors" onclick="openContextPanel('USR-1022', '@jane_doe', 'Pending')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-4 font-mono text-[13px] text-text-secondary">USR-1022</td>
+<td class="p-4 font-medium">@jane_doe</td>
+<td class="p-4">
+<span class="px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 text-[11px] font-semibold uppercase">Pending</span>
+</td>
+<td class="p-4 text-text-secondary">2024-04-01</td>
+<td class="p-4">
+<span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-text-secondary"></div> Pro</span>
+</td>
+<td class="p-4 text-text-secondary">14%</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface cursor-pointer group transition-colors" onclick="openContextPanel('USR-9932', '@minimal_st', 'Archived')">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-4 font-mono text-[13px] text-text-secondary">USR-9932</td>
+<td class="p-4 font-medium">@minimal_st</td>
+<td class="p-4">
+<span class="px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 text-[11px] font-semibold uppercase">Archived</span>
+</td>
+<td class="p-4 text-text-secondary">2023-11-28</td>
+<td class="p-4">
+<span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-text-secondary opacity-30"></div> Free</span>
+</td>
+<td class="p-4 text-text-secondary">99%</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface cursor-pointer group transition-colors">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-4 font-mono text-[13px] text-text-secondary">USR-7721</td>
+<td class="p-4 font-medium">@flow_blok</td>
+<td class="p-4">
+<span class="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-semibold uppercase">Active</span>
+</td>
+<td class="p-4 text-text-secondary">2024-05-15</td>
+<td class="p-4">
+<span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-primary"></div> Enterprise</span>
+</td>
+<td class="p-4 text-text-secondary">4%</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface cursor-pointer group transition-colors">
+<td class="p-4"><input class="rounded border-border text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-4 font-mono text-[13px] text-text-secondary">USR-0012</td>
+<td class="p-4 font-medium">@data_wizard</td>
+<td class="p-4">
+<span class="px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-[11px] font-semibold uppercase">Restricted</span>
+</td>
+<td class="p-4 text-text-secondary">2024-01-20</td>
+<td class="p-4">
+<span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-text-secondary"></div> Pro</span>
+</td>
+<td class="p-4 text-text-secondary">55%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Contextual Right Panel -->
+<aside class="w-80 h-full border-l border-border bg-canvas translate-x-full transition-transform duration-300 ease-in-out fixed right-0 top-[56px] bottom-[32px] z-40 flex flex-col shadow-[-4px_0_12px_rgba(0,0,0,0.02)]" id="contextPanel">
+<div class="p-6 flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h2 class="font-label-caps text-label-caps text-text-secondary">Record Details</h2>
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary transition-colors" onclick="closeContextPanel()">close</button>
+</div>
+<div class="flex flex-col gap-4">
+<div class="w-full h-32 rounded-lg bg-surface border border-border flex items-center justify-center overflow-hidden">
+<img alt="Record Icon" class="w-20 h-20 opacity-80" data-alt="A minimalist digital portrait representation using geometric shapes and clean lines. The art style is abstract and professional, featuring a cool blue and gray color palette that aligns with a high-utility minimalist developer tool aesthetic. The background is a crisp white with a very subtle dot grid pattern." id="panelImage" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJaMptDNEK9uPVnQHF7zaNBuCL2hKEgN_xGjN3LoWd3WPSnFDheYmrfOuF2xheaZ--HsDI3PvJSo8aqkb4jLvzNvdaer_qlYdDH2kcrsdqeUOGuRAoz2PqZ5187fdp67kFP8rlhedujkJfDjDPKz6EgvVsNtN2hPzG5CyvVdXrhIHJvz75hgGEBixLHj-8XX1BdPcr2cTL4rUrgFUSuNPLy7W1k9t-0CEze3XuazDmAyu5eOiXVHwB-YCGy17TMlwzZ6wQfjzZBCU"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="mono-header">Record ID</label>
+<p class="font-mono text-label-sm text-text-primary" id="panelId">USR-8821</p>
+</div>
+<div class="flex flex-col gap-1">
+<label class="mono-header">User Handle</label>
+<input class="w-full bg-white border border-border rounded px-3 py-2 text-label-sm focus:ring-2 focus:ring-primary focus:outline-none" id="panelHandle" type="text" value="@alex_dev"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="mono-header">Status</label>
+<select class="w-full bg-white border border-border rounded px-3 py-2 text-label-sm focus:ring-2 focus:ring-primary focus:outline-none" id="panelStatus">
+<option>Active</option>
+<option>Pending</option>
+<option>Archived</option>
+<option>Restricted</option>
+</select>
+</div>
+<div class="flex flex-col gap-1 mt-4 p-4 bg-surface rounded-lg border border-border">
+<div class="flex justify-between items-center mb-2">
+<span class="text-[11px] font-bold text-text-secondary uppercase">Metadata</span>
+<span class="material-symbols-outlined text-[16px] text-text-secondary">info</span>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between text-[12px]">
+<span class="text-text-secondary">Last Updated</span>
+<span>2 mins ago</span>
+</div>
+<div class="flex justify-between text-[12px]">
+<span class="text-text-secondary">Created By</span>
+<span>system_root</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto flex gap-2 pt-6">
+<button class="flex-1 py-2 text-label-sm font-semibold text-text-primary bg-surface border border-border rounded hover:bg-white transition-all">Discard</button>
+<button class="flex-1 py-2 text-label-sm font-semibold text-white bg-primary rounded hover:opacity-90 transition-all">Save Changes</button>
+</div>
+</div>
+</aside>
+</main>
+<!-- Footer -->
+<footer class="fixed bottom-0 w-full h-[32px] flex justify-between items-center px-margin-page bg-canvas border-t border-border z-50">
+<div class="flex items-center gap-4">
+<span class="font-label-caps text-[10px] text-text-secondary tracking-widest">Flowblok OS © 2024</span>
+<div class="h-3 w-[1px] bg-border"></div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+<span class="font-label-sm text-[10px] text-text-secondary">Cloud Sync: Active</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 font-label-sm text-[10px] text-text-secondary uppercase tracking-tighter">
+<span class="hover:text-primary cursor-pointer transition-colors">Docs</span>
+<span class="hover:text-primary cursor-pointer transition-colors">API Status</span>
+<span class="text-primary font-bold">Telemetry: Enabled</span>
+</div>
+</div>
+</footer>
+<script>
+        const panel = document.getElementById('contextPanel');
+        const panelId = document.getElementById('panelId');
+        const panelHandle = document.getElementById('panelHandle');
+        const panelStatus = document.getElementById('panelStatus');
+        const panelImage = document.getElementById('panelImage');
+
+        function openContextPanel(id, handle, status) {
+            panelId.innerText = id;
+            panelHandle.value = handle;
+            panelStatus.value = status;
+            
+            // Randomize seed for identicon for visual feedback
+            panelImage.src = `https://api.dicebear.com/7.x/identicon/svg?seed=${handle.replace('@', '')}`;
+            
+            panel.classList.remove('translate-x-full');
+        }
+
+        function closeContextPanel() {
+            panel.classList.add('translate-x-full');
+        }
+
+        // Close panel on escape
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeContextPanel();
+        });
+
+        // Micro-interaction for table rows
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.borderLeft = '2px solid #004ac6';
+            });
+            row.addEventListener('mouseleave', () => {
+                row.style.borderLeft = 'none';
+            });
+        });
+    </script>
+</body></html>

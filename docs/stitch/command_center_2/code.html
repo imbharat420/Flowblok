@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok OS | Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e7e7f3",
+                        "on-secondary-fixed-variant": "#474646",
+                        "on-background": "#191b23",
+                        "tertiary-container": "#bc4800",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffede6",
+                        "secondary-container": "#e5e2e1",
+                        "surface-container-low": "#f3f3fe",
+                        "on-primary-fixed": "#00174b",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191b23",
+                        "tertiary-fixed": "#ffdbcd",
+                        "dark-canvas": "#0A0A0A",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#faf8ff",
+                        "surface": "#FAFAFA",
+                        "surface-tint": "#0053db",
+                        "on-secondary-container": "#656464",
+                        "on-surface-variant": "#434655",
+                        "primary": "#004ac6",
+                        "tertiary": "#943700",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "inverse-primary": "#b4c5ff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container-highest": "#e1e2ed",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#2563eb",
+                        "surface-container": "#ededf9",
+                        "surface-variant": "#e1e2ed",
+                        "on-error": "#ffffff",
+                        "border": "#EEEEEE",
+                        "secondary-fixed": "#e5e2e1",
+                        "outline-variant": "#c3c6d7",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2e3039",
+                        "text-primary": "#111111",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "outline": "#737686",
+                        "surface-dim": "#d9d9e5",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-primary-container": "#eeefff",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-tertiary-fixed": "#360f00",
+                        "secondary": "#5f5e5e",
+                        "canvas": "#FFFFFF",
+                        "background": "#faf8ff",
+                        "error-container": "#ffdad6",
+                        "text-secondary": "#666666"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-v": "120px",
+                        "base": "8px",
+                        "max-width": "1200px",
+                        "margin-page": "40px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display": ["Inter"],
+                        "headline": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-medium": ["Inter"],
+                        "body": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display": ["72px", {"lineHeight": "0.95", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "headline": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-sm": ["13px", {"lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                        "body-medium": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "body": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #EEEEEE; border-radius: 10px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-canvas text-text-primary min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 border-r border-border bg-canvas flex flex-col py-8 px-4 gap-base z-50">
+<div class="mb-12 px-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-text-primary rounded flex items-center justify-center text-canvas">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<div>
+<h1 class="font-headline text-body-medium font-bold text-text-primary">Flowblok Dev</h1>
+<p class="font-label-caps text-[10px] text-text-secondary tracking-widest">Standard Node</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-primary font-bold border-r-2 border-primary bg-surface-container-low transition-all duration-150" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-label-caps text-label-caps">Command Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-label-caps text-label-caps">Workflow Builder</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-caps text-label-caps">Content Engine</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-label-caps text-label-caps">Database</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all duration-150" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-caps text-label-caps">System Info</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1 pt-8 border-t border-border">
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary transition-all duration-150" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-caps text-label-caps">Documentation</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary transition-all duration-150" href="#">
+<span class="material-symbols-outlined">code</span>
+<span class="font-label-caps text-label-caps">Terminal</span>
+</a>
+</div>
+</aside>
+<main class="flex-1 ml-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="sticky top-0 h-[56px] border-b border-border bg-canvas/80 backdrop-blur-md z-40 flex justify-between items-center px-margin-page w-full h-full">
+<div class="flex items-center gap-8 h-full">
+<span class="font-headline text-body-medium font-bold text-text-primary">Flowblok OS</span>
+<div class="flex items-center gap-6 h-full">
+<a class="text-primary border-b-2 border-primary pb-1 font-body text-body text-[14px]" href="#">Dashboard</a>
+<a class="text-text-secondary hover:text-text-primary transition-colors font-body text-body text-[14px]" href="#">Workflows</a>
+<a class="text-text-secondary hover:text-text-primary transition-colors font-body text-body text-[14px]" href="#">CMS</a>
+<a class="text-text-secondary hover:text-text-primary transition-colors font-body text-body text-[14px]" href="#">Settings</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary transition-all">search</button>
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary transition-all">notifications</button>
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary transition-all">account_circle</button>
+</div>
+</header>
+<div class="max-w-[1200px] mx-auto px-margin-page py-16">
+<!-- Section 1: Hero & Status -->
+<section class="grid grid-cols-12 gap-gutter mb-section-v">
+<div class="col-span-12 md:col-span-8">
+<h2 class="font-label-caps text-label-caps text-text-secondary mb-4">Command Center / Node-04</h2>
+<h3 class="font-headline text-headline text-text-primary mb-8 max-w-xl">System operational. All clusters reporting healthy throughput.</h3>
+<div class="grid grid-cols-3 gap-8 pt-8 border-t border-border">
+<div>
+<p class="font-label-caps text-label-caps text-text-secondary mb-2">CPU LOAD</p>
+<p class="font-headline text-[32px] text-text-primary">12.4<span class="text-text-secondary font-normal text-body">%</span></p>
+<div class="w-full h-1 bg-surface-container-highest mt-2">
+<div class="h-full bg-primary w-[12%]"></div>
+</div>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-text-secondary mb-2">LATENCY</p>
+<p class="font-headline text-[32px] text-text-primary">14<span class="text-text-secondary font-normal text-body">ms</span></p>
+<div class="w-full h-1 bg-surface-container-highest mt-2">
+<div class="h-full bg-primary w-[5%]"></div>
+</div>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-text-secondary mb-2">MEMORY</p>
+<p class="font-headline text-[32px] text-text-primary">4.2<span class="text-text-secondary font-normal text-body">gb</span></p>
+<div class="w-full h-1 bg-surface-container-highest mt-2">
+<div class="h-full bg-primary w-[38%]"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-4 flex flex-col justify-end">
+<div class="p-6 border border-border rounded bg-surface">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-caps text-label-caps text-text-secondary">ACTIVE TASKS</span>
+<span class="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
+</div>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[16px] text-primary">sync</span>
+<span class="font-body text-label-sm">Reindexing production_db...</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[16px] text-primary">cloud_upload</span>
+<span class="font-body text-label-sm">Syncing assets to CDN</span>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Section 2: Telemetry Data -->
+<section class="mb-section-v">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-label-caps text-label-caps text-text-secondary mb-2">CORE TELEMETRY</h2>
+<p class="font-body text-text-secondary">Real-time data streams from node clusters.</p>
+</div>
+<button class="font-label-caps text-label-caps text-primary border border-primary px-4 py-2 hover:bg-primary hover:text-canvas transition-all">
+                        EXPORT DATA
+                    </button>
+</div>
+<div class="grid grid-cols-12 gap-gutter">
+<!-- High Density Table -->
+<div class="col-span-12 lg:col-span-9">
+<div class="border border-border overflow-hidden">
+<table class="w-full text-left">
+<thead class="bg-surface">
+<tr>
+<th class="px-6 py-4 font-label-caps text-label-caps text-text-secondary">NODE ID</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-text-secondary">UPTIME</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-text-secondary">TRAFFIC</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-text-secondary">STATUS</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-text-secondary">ACTION</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border">
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-body text-label-sm">us-east-1a</td>
+<td class="px-6 py-4 font-body text-label-sm text-text-secondary">99.98%</td>
+<td class="px-6 py-4 font-body text-label-sm">1.2k req/s</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ecfdf5] text-[#065f46] uppercase tracking-wider">Operational</span>
+</td>
+<td class="px-6 py-4">
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-body text-label-sm">eu-central-1</td>
+<td class="px-6 py-4 font-body text-label-sm text-text-secondary">99.42%</td>
+<td class="px-6 py-4 font-body text-label-sm">840 req/s</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fefce8] text-[#854d0e] uppercase tracking-wider">Warning</span>
+</td>
+<td class="px-6 py-4">
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-body text-label-sm">ap-south-1</td>
+<td class="px-6 py-4 font-body text-label-sm text-text-secondary">100%</td>
+<td class="px-6 py-4 font-body text-label-sm">2.4k req/s</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ecfdf5] text-[#065f46] uppercase tracking-wider">Operational</span>
+</td>
+<td class="px-6 py-4">
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-4 font-body text-label-sm">us-west-2</td>
+<td class="px-6 py-4 font-body text-label-sm text-text-secondary">99.99%</td>
+<td class="px-6 py-4 font-body text-label-sm">312 req/s</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ecfdf5] text-[#065f46] uppercase tracking-wider">Operational</span>
+</td>
+<td class="px-6 py-4">
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary">more_horiz</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Asymmetric Side Card -->
+<div class="col-span-12 lg:col-span-3">
+<div class="h-full border border-border bg-text-primary p-6 text-canvas flex flex-col justify-between">
+<div>
+<h4 class="font-label-caps text-label-caps text-surface-container-highest mb-4">SYSTEM LOAD</h4>
+<div class="flex items-end gap-2 mb-8">
+<div class="w-2 h-4 bg-primary-container"></div>
+<div class="w-2 h-8 bg-primary-container"></div>
+<div class="w-2 h-6 bg-primary-container"></div>
+<div class="w-2 h-10 bg-primary-container"></div>
+<div class="w-2 h-12 bg-primary"></div>
+<div class="w-2 h-8 bg-primary-container"></div>
+<div class="w-2 h-4 bg-primary-container"></div>
+</div>
+<p class="font-body text-label-sm text-surface-container-highest/80 leading-relaxed">
+                                    Current throughput exceeds baseline by <span class="text-canvas font-bold">14.2%</span>. Auto-scaling initiated.
+                                </p>
+</div>
+<a class="font-label-caps text-label-caps flex items-center gap-2 group" href="#">
+                                VIEW LOGS 
+                                <span class="material-symbols-outlined text-[14px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Activity Timeline -->
+<section class="grid grid-cols-12 gap-gutter mb-section-v">
+<div class="col-span-12 md:col-span-4">
+<h2 class="font-label-caps text-label-caps text-text-secondary mb-2">RECENT ACTIVITY</h2>
+<p class="font-body text-text-secondary mb-8">Audit trail for node system changes.</p>
+</div>
+<div class="col-span-12 md:col-span-8">
+<div class="space-y-0">
+<div class="group flex items-start gap-8 py-6 border-b border-border transition-colors hover:bg-surface-container-low/50">
+<span class="font-label-caps text-label-caps text-text-secondary pt-1">09:42 AM</span>
+<div class="flex-1">
+<p class="font-body-medium text-body-medium text-text-primary">Workflow deployment: <code class="bg-surface px-1.5 py-0.5 rounded border border-border text-[13px]">stripe-sync-v4</code></p>
+<p class="font-body text-label-sm text-text-secondary">Initiated by user <span class="text-text-primary">alex_dev</span></p>
+</div>
+</div>
+<div class="group flex items-start gap-8 py-6 border-b border-border transition-colors hover:bg-surface-container-low/50">
+<span class="font-label-caps text-label-caps text-text-secondary pt-1">08:15 AM</span>
+<div class="flex-1">
+<p class="font-body-medium text-body-medium text-text-primary">Database connection timeout on <span class="text-error font-bold">Node-X4</span></p>
+<p class="font-body text-label-sm text-text-secondary">Auto-recovery successful in 4.2s.</p>
+</div>
+</div>
+<div class="group flex items-start gap-8 py-6 border-b border-border transition-colors hover:bg-surface-container-low/50">
+<span class="font-label-caps text-label-caps text-text-secondary pt-1">07:00 AM</span>
+<div class="flex-1">
+<p class="font-body-medium text-body-medium text-text-primary">System-wide snapshot complete</p>
+<p class="font-body text-label-sm text-text-secondary">All shards verified. Total size: 1.84 TB</p>
+</div>
+</div>
+<div class="group flex items-start gap-8 py-6 border-b border-border transition-colors hover:bg-surface-container-low/50">
+<span class="font-label-caps text-label-caps text-text-secondary pt-1">04:22 AM</span>
+<div class="flex-1">
+<p class="font-body-medium text-body-medium text-text-primary">API Key Rotation: <code class="bg-surface px-1.5 py-0.5 rounded border border-border text-[13px]">prod_key_77a</code></p>
+<p class="font-body text-label-sm text-text-secondary">Automated security task.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 4: Workflow Map (Bento-style visualization) -->
+<section class="mb-section-v">
+<h2 class="font-label-caps text-label-caps text-text-secondary mb-8">SYSTEM ARCHITECTURE</h2>
+<div class="grid grid-cols-12 grid-rows-2 gap-4 h-[500px]">
+<div class="col-span-8 row-span-2 border border-border relative overflow-hidden group">
+<div class="absolute inset-0 bg-[#0A0A0A] opacity-[0.03] group-hover:opacity-[0.05] transition-opacity"></div>
+<!-- Canvas Dot Grid -->
+<div class="absolute inset-0" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 24px 24px; opacity: 0.1;"></div>
+<div class="relative h-full flex items-center justify-center">
+<div class="p-4 border border-border bg-canvas shadow-sm">
+<span class="font-label-caps text-label-caps text-text-primary">CENTRAL GATEWAY</span>
+</div>
+<!-- Vector lines logic - simple visual placeholder -->
+<div class="absolute w-[300px] h-px bg-border -rotate-45 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2"></div>
+<div class="absolute w-[300px] h-px bg-border rotate-45 translate-x-1/2 -translate-y-1/2 right-1/2 top-1/2"></div>
+</div>
+<div class="absolute bottom-6 left-6">
+<p class="font-label-caps text-[10px] text-text-secondary tracking-[0.2em]">LIVE REPLICATION MAP</p>
+</div>
+</div>
+<div class="col-span-4 row-span-1 border border-border bg-surface flex flex-col items-center justify-center p-8">
+<div class="text-center">
+<p class="font-label-caps text-label-caps text-text-secondary mb-2">NETWORK HEALTH</p>
+<p class="font-headline text-[48px] text-[#10b981]">99.9%</p>
+</div>
+</div>
+<div class="col-span-4 row-span-1 border border-border p-8 flex flex-col justify-between">
+<div>
+<p class="font-label-caps text-label-caps text-text-secondary mb-4">IOPS THROUGHPUT</p>
+<div class="flex items-baseline gap-2">
+<p class="font-headline text-[32px] text-text-primary">184.2k</p>
+<span class="font-body text-label-sm text-[#10b981]">+2.1%</span>
+</div>
+</div>
+<div class="flex gap-1 h-8 items-end">
+<div class="bg-primary/20 w-full h-1/2"></div>
+<div class="bg-primary/20 w-full h-3/4"></div>
+<div class="bg-primary w-full h-full"></div>
+<div class="bg-primary/20 w-full h-1/2"></div>
+<div class="bg-primary/20 w-full h-2/3"></div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<footer class="mt-20 py-12 px-margin-page border-t border-border">
+<div class="max-w-[1200px] mx-auto flex justify-between items-center">
+<div class="flex items-center gap-6">
+<p class="font-label-caps text-label-caps text-text-secondary">© 2024 FLOWBLOK OS</p>
+<p class="font-label-caps text-label-caps text-text-secondary">BUILD 0.8.2-BETA</p>
+</div>
+<div class="flex gap-8">
+<a class="font-label-caps text-label-caps text-text-secondary hover:text-text-primary" href="#">STATUS</a>
+<a class="font-label-caps text-label-caps text-text-secondary hover:text-text-primary" href="#">API</a>
+<a class="font-label-caps text-label-caps text-text-secondary hover:text-text-primary" href="#">LEGAL</a>
+</div>
+</div>
+</footer>
+</main>
+<script>
+        // Micro-interaction: Subtle hover for system metrics
+        document.querySelectorAll('section .grid div').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                el.style.borderColor = '#004ac6';
+                el.style.transition = 'border-color 0.3s ease';
+            });
+            el.addEventListener('mouseleave', () => {
+                el.style.borderColor = '#EEEEEE';
+            });
+        });
+
+        // Simulating live CPU load fluctuations
+        setInterval(() => {
+            const cpuEl = document.querySelector('p.font-headline:first-of-type');
+            if (cpuEl) {
+                const current = parseFloat(cpuEl.innerText);
+                const change = (Math.random() - 0.5) * 0.5;
+                const next = (current + change).toFixed(1);
+                cpuEl.innerHTML = `${next}<span class="text-text-secondary font-normal text-body">%</span>`;
+            }
+        }, 3000);
+    </script>
+</body></html>
