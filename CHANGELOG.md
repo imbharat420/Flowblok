@@ -5,6 +5,17 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-06-16
+**Full admin suite + super-admin RBAC.** All 16 modules are now live.
+### Added
+- **RBAC foundation**: role → capability matrix (`rbac.ts`), `can()` / `isSuperAdmin()`, auth/role
+  context, top-bar **role switcher** (Owner = super admin), capability-gated sidebar.
+- **Shared UI kit**: Button, Badge, DataTable, Drawer, Tabs, PageHeader, EmptyState (DRY across modules).
+- **13 modules** (each = repository → service → controller + API + page):
+  Spaces, Pages, Components, Database, APIs, CRM (Lite pipeline), Commerce, AI (one-prompt generation),
+  Analytics (role dashboards), Marketplace, Assets, **Users & Roles** (super-admin capability matrix), Settings.
+- Settings danger-zone (delete space) gated to the Owner via `can("manage_billing")`.
+
 ## [0.3.0] — 2026-06-16
 **Workflow Builder (n8n-style).**
 ### Added
@@ -36,7 +47,8 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.4.0
 [0.3.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.3.0
 [0.2.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.2.0
 [0.1.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.1.0
