@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #FFFFFF;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+            font-size: 18px;
+        }
+
+        .canvas-grid {
+            background-image: radial-gradient(#E5E7EB 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
+
+        .selection-box {
+            border: 1px solid #2563EB;
+            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.1);
+        }
+
+        .property-panel {
+            scrollbar-width: none;
+        }
+        .property-panel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-select {
+            user-select: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e7e7f3",
+                        "on-secondary-fixed-variant": "#474646",
+                        "on-background": "#191b23",
+                        "tertiary-container": "#bc4800",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffede6",
+                        "secondary-container": "#e5e2e1",
+                        "surface-container-low": "#f3f3fe",
+                        "on-primary-fixed": "#00174b",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191b23",
+                        "tertiary-fixed": "#ffdbcd",
+                        "dark-canvas": "#0A0A0A",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#faf8ff",
+                        "surface": "#FAFAFA",
+                        "surface-tint": "#0053db",
+                        "on-secondary-container": "#656464",
+                        "on-surface-variant": "#434655",
+                        "primary": "#004ac6",
+                        "tertiary": "#943700",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "inverse-primary": "#b4c5ff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container-highest": "#e1e2ed",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#2563eb",
+                        "surface-container": "#ededf9",
+                        "surface-variant": "#e1e2ed",
+                        "on-error": "#ffffff",
+                        "border": "#EEEEEE",
+                        "secondary-fixed": "#e5e2e1",
+                        "outline-variant": "#c3c6d7",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2e3039",
+                        "text-primary": "#111111",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "outline": "#737686",
+                        "surface-dim": "#d9d9e5",
+                        "inverse-on-surface": "#f0f0fb",
+                        "on-primary-container": "#eeefff",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-tertiary-fixed": "#360f00",
+                        "secondary": "#5f5e5e",
+                        "canvas": "#FFFFFF",
+                        "background": "#faf8ff",
+                        "error-container": "#ffdad6",
+                        "text-secondary": "#666666"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-v": "120px",
+                        "base": "8px",
+                        "max-width": "1200px",
+                        "margin-page": "40px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display": ["Inter"],
+                        "headline": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-medium": ["Inter"],
+                        "body": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display": ["72px", {"lineHeight": "0.95", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "headline": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-sm": ["13px", {"lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                        "body-medium": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "500"}],
+                        "body": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-canvas">
+<!-- Top Bar Navigation -->
+<header class="fixed top-0 left-0 right-0 h-[56px] flex justify-between items-center px-6 bg-canvas z-50 border-b border-border">
+<div class="flex items-center gap-6">
+<div class="font-headline text-body-medium font-bold text-text-primary">Flowblok OS</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-body text-body text-primary border-b-2 border-primary pb-1" href="#">Workflows</a>
+<a class="font-body text-body text-text-secondary hover:text-text-primary transition-colors" href="#">Dashboard</a>
+<a class="font-body text-body text-text-secondary hover:text-text-primary transition-colors" href="#">CMS</a>
+<a class="font-body text-body text-text-secondary hover:text-text-primary transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary transition-colors" data-icon="search">search</button>
+<button class="material-symbols-outlined text-text-secondary hover:text-text-primary transition-colors" data-icon="notifications">notifications</button>
+<div class="h-8 w-8 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden border border-border">
+<span class="material-symbols-outlined text-text-secondary" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Side Navigation Shell (Hidden on Focus journeys, but here as per anchor) -->
+<aside class="fixed left-0 top-[56px] bottom-0 w-64 bg-canvas border-r border-border z-40 hidden md:flex flex-col py-8 px-4 gap-base">
+<div class="flex items-center gap-3 px-2 mb-6">
+<div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</div>
+<div>
+<div class="font-headline text-body-medium font-bold text-text-primary leading-tight">Flowblok Dev</div>
+<div class="font-label-caps text-[10px] tracking-wider text-text-secondary">STANDARD NODE</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<button class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+                Workflow Builder
+            </button>
+<button class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-primary font-bold border-r-2 border-primary bg-surface-container-low transition-all">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                Content Engine
+            </button>
+<button class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+                Database
+            </button>
+<button class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary hover:text-text-primary hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                System Info
+            </button>
+</nav>
+<div class="mt-auto border-t border-border pt-4 flex flex-col gap-1">
+<button class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary hover:text-text-primary transition-all">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Documentation
+            </button>
+<button class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps text-text-secondary hover:text-text-primary transition-all">
+<span class="material-symbols-outlined" data-icon="code">code</span>
+                Terminal
+            </button>
+</div>
+</aside>
+<!-- Main Infinite Canvas -->
+<main class="fixed inset-0 top-[56px] left-64 right-80 canvas-grid flex items-center justify-center overflow-hidden">
+<!-- Canvas Content -->
+<div class="relative w-[3000px] h-[3000px] cursor-crosshair" id="canvas-container">
+<!-- Bento-style Card Template 1 -->
+<div class="absolute top-[1200px] left-[1300px] w-80 bg-white border border-border p-6 selection-box rounded-lg">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-caps text-label-caps text-text-secondary uppercase">Node: Auth_01</span>
+<span class="material-symbols-outlined text-primary" data-icon="verified_user">verified_user</span>
+</div>
+<h3 class="font-display text-[24px] font-semibold text-text-primary mb-2">User Validation</h3>
+<p class="font-body text-sm text-text-secondary mb-6">Executes a secure authentication handshake via JWT tokens.</p>
+<div class="space-y-2">
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-2/3"></div>
+</div>
+<div class="flex justify-between text-[10px] font-label-caps text-text-secondary">
+<span>LATENCY</span>
+<span>24MS</span>
+</div>
+</div>
+</div>
+<!-- Bento-style Card Template 2 -->
+<div class="absolute top-[1250px] left-[1700px] w-96 bg-white border border-border overflow-hidden rounded-lg">
+<div class="h-40 bg-surface relative">
+<div class="absolute inset-0 opacity-10">
+
+</div>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-primary/20" data-icon="hub">hub</span>
+</div>
+</div>
+<div class="p-6">
+<div class="font-label-caps text-label-caps text-text-secondary mb-2">INTEGRATION ENGINE</div>
+<h4 class="font-headline text-[20px] font-bold text-text-primary">Data Streaming</h4>
+<div class="mt-4 grid grid-cols-2 gap-4">
+<div class="p-3 bg-surface border border-border rounded">
+<div class="text-[10px] text-text-secondary font-label-caps mb-1">INGRESS</div>
+<div class="font-mono text-xs">842 KB/s</div>
+</div>
+<div class="p-3 bg-surface border border-border rounded">
+<div class="text-[10px] text-text-secondary font-label-caps mb-1">EGRESS</div>
+<div class="font-mono text-xs">12.4 MB/s</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Visual Connector Lines (Hard Coded for aesthetic) -->
+<svg class="absolute top-0 left-0 w-full h-full pointer-events-none" style="filter: drop-shadow(0 0 2px rgba(37,99,235,0.1));">
+<path d="M 1620 1300 L 1700 1300" fill="none" stroke="#2563EB" stroke-width="1.5"></path>
+<circle cx="1620" cy="1300" fill="#2563EB" r="3"></circle>
+<circle cx="1700" cy="1300" fill="#2563EB" r="3"></circle>
+</svg>
+</div>
+<!-- Floating Toolbar -->
+<div class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center bg-white border border-border shadow-sm rounded-full px-4 h-12 gap-2 z-50">
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors material-symbols-outlined text-text-secondary" data-icon="near_me">near_me</button>
+<div class="w-px h-6 bg-border mx-1"></div>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors material-symbols-outlined text-text-secondary" data-icon="rectangle">rectangle</button>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors material-symbols-outlined text-text-secondary" data-icon="circle">circle</button>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors material-symbols-outlined text-text-secondary" data-icon="text_fields">text_fields</button>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors material-symbols-outlined text-text-secondary" data-icon="image">image</button>
+<div class="w-px h-6 bg-border mx-1"></div>
+<button class="p-2 bg-primary-container text-white rounded-full transition-all material-symbols-outlined" data-icon="add">add</button>
+</div>
+</main>
+<!-- Properties Panel (Framer/Figma inspired) -->
+<aside class="fixed right-0 top-[56px] bottom-0 w-80 bg-surface border-l border-border z-40 property-panel overflow-y-auto">
+<!-- Panel Header -->
+<div class="p-4 border-b border-border flex justify-between items-center bg-canvas sticky top-0">
+<span class="font-label-caps text-label-caps text-text-primary">PROPERTIES</span>
+<span class="material-symbols-outlined text-text-secondary text-sm" data-icon="settings">settings</span>
+</div>
+<!-- Selection Info -->
+<div class="p-6 space-y-8">
+<!-- Geometry -->
+<div>
+<div class="font-label-caps text-[11px] text-text-secondary tracking-widest mb-4">GEOMETRY</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex items-center gap-3">
+<span class="font-mono text-[11px] text-text-secondary w-4">X</span>
+<input class="w-full bg-canvas border border-border px-2 py-1 text-xs rounded focus:ring-1 focus:ring-primary focus:outline-none" type="text" value="1300"/>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-mono text-[11px] text-text-secondary w-4">Y</span>
+<input class="w-full bg-canvas border border-border px-2 py-1 text-xs rounded focus:ring-1 focus:ring-primary focus:outline-none" type="text" value="1200"/>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-mono text-[11px] text-text-secondary w-4">W</span>
+<input class="w-full bg-canvas border border-border px-2 py-1 text-xs rounded focus:ring-1 focus:ring-primary focus:outline-none" type="text" value="320"/>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-mono text-[11px] text-text-secondary w-4">H</span>
+<input class="w-full bg-canvas border border-border px-2 py-1 text-xs rounded focus:ring-1 focus:ring-primary focus:outline-none" disabled="" type="text" value="Auto"/>
+</div>
+</div>
+</div>
+<!-- Styles -->
+<div>
+<div class="font-label-caps text-[11px] text-text-secondary tracking-widest mb-4">VISUALS</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-xs text-text-primary">Fill</span>
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-sm border border-border bg-white shadow-inner"></div>
+<span class="font-mono text-[10px] text-text-secondary">#FFFFFF</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-text-primary">Stroke</span>
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 rounded-sm border border-border bg-[#EEEEEE]"></div>
+<span class="font-mono text-[10px] text-text-secondary">#EEEEEE</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-text-primary">Opacity</span>
+<div class="flex items-center gap-4 flex-1 justify-end">
+<input class="w-24 accent-primary" max="100" min="0" type="range" value="100"/>
+<span class="font-mono text-[10px] text-text-secondary min-w-[30px] text-right">100%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Flow Constraints -->
+<div>
+<div class="font-label-caps text-[11px] text-text-secondary tracking-widest mb-4">CONSTRAINTS</div>
+<div class="p-4 bg-canvas border border-border rounded-lg flex items-center justify-center">
+<div class="relative w-16 h-16 border border-dashed border-border flex items-center justify-center">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-primary"></div>
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary"></div>
+<div class="w-6 h-6 border border-primary bg-primary/10"></div>
+</div>
+</div>
+</div>
+<!-- Logic Node -->
+<div>
+<div class="font-label-caps text-[11px] text-text-secondary tracking-widest mb-4">LOGIC NODE</div>
+<button class="w-full py-2 bg-surface-container-high text-text-primary text-xs font-semibold rounded hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[14px]" data-icon="bolt">bolt</span>
+                    Edit Script
+                </button>
+</div>
+</div>
+<!-- Panel Footer -->
+<div class="mt-8 px-6 pb-6">
+<div class="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-[16px]" data-icon="info">info</span>
+<span class="text-[11px] font-bold text-primary uppercase">Canvas Tip</span>
+</div>
+<p class="text-[11px] text-primary/80 leading-relaxed">
+                    Hold <kbd class="bg-white px-1 border border-primary/10 rounded">Space</kbd> to pan the canvas. Use <kbd class="bg-white px-1 border border-primary/10 rounded">⌘</kbd> + <kbd class="bg-white px-1 border border-primary/10 rounded">D</kbd> to duplicate selected nodes.
+                </p>
+</div>
+</div>
+</aside>
+<!-- Canvas Interaction Scripts -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            let isPanning = false;
+            let startX, startY;
+            let scrollLeft, scrollTop;
+
+            // Simple Panning Logic
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    container.style.cursor = 'grab';
+                    isPanning = true;
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    container.style.cursor = 'crosshair';
+                    isPanning = false;
+                }
+            });
+
+            // Note: In a real app, panning would move the main overflow container. 
+            // For this UI demo, we simulate the 'infinite' feel via layout.
+            
+            // Selection effect simulation
+            const cards = document.querySelectorAll('.bg-white.border.border-border');
+            cards.forEach(card => {
+                card.addEventListener('click', (e) => {
+                    cards.forEach(c => c.classList.remove('selection-box'));
+                    card.classList.add('selection-box');
+                    e.stopPropagation();
+                });
+            });
+
+            document.body.addEventListener('click', () => {
+                cards.forEach(c => c.classList.remove('selection-box'));
+            });
+        });
+    </script>
+</body></html>

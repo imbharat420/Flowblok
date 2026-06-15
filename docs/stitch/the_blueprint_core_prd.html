@@ -1,0 +1,211 @@
+# The Blueprint Core
+
+## Product Overview
+
+**The Pitch:** A high-density, HUD-style operating system for orchestrating digital experiences. DXOS unifies interface design, database management, and workflow automation into a single, technical maximalist environment.
+
+**For:** Full-stack developers, technical product managers, and power users who need complete control over the application stack without abstraction penalties.
+
+**Device:** desktop
+
+**Design Direction:** Technical Maximalism. High-density HUD interface, aggressive dark mode, exposed grid structures, and terminal-inspired aesthetics. 
+
+**Inspired by:** VS Code, Retool, n8n
+
+---
+
+## Screens
+
+- **Command Center:** Real-time system telemetry, recent cross-layer activity, and quick-launch terminal.
+- **Design Layer:** Absolute-control visual page builder with DOM tree, CSS inspector, and live canvas.
+- **Data Layer:** Relational schema builder and raw record editor with inline GraphQL query testing.
+- **Logic Layer:** Node-based workflow canvas for API routing, cron jobs, and event-driven automation.
+
+---
+
+## Key Flows
+
+**Building an Event-Driven Automation:** User wants to trigger a workflow when a new database record is created.
+
+1. User is on Command Center -> hits `Cmd+K` to open Universal Layer Switcher -> types `Logic: New Workflow`
+2. User clicks **Add Trigger Node** -> selects **Data Layer Event** -> sets collection to `Users`
+3. User connects trigger to **Email Node** -> maps payload variables via inline code editor -> hits **Deploy**
+
+---
+
+<details>
+<summary>Design System</summary>
+
+## Color Palette
+
+- **Primary:** `#00F0FF` - Neon Cyan for active states, primary actions, layer indicators
+- **Background:** `#050505` - Deep Abyss for main application canvas
+- **Surface:** `#111111` - Panel Grey for sidebars, modals, floating palettes
+- **Text:** `#EAEAEA` - Phosphor White for primary readability
+- **Muted:** `#333333` - Grid Grey for borders, inactive tabs, secondary text
+- **Accent:** `#00FF41` - Terminal Green for success states, execution indicators
+
+## Typography
+
+Choose fonts that are **distinctive and characterful**, rooted in coding environments.
+
+- **Headings:** JetBrains Mono, 700, 16-20px, uppercase tracking
+- **Body:** Space Grotesk, 400, 14px
+- **Small text:** JetBrains Mono, 400, 12px
+- **Buttons:** JetBrains Mono, 600, 12px, uppercase
+
+**Style notes:** Hard `0px` border radius everywhere. `1px` solid borders on all panels (`#333333`). Glowing inset shadows on active primary elements. Dense, compact spacing to maximize viewport utility.
+
+## Design Tokens
+
+```css
+:root {
+  --color-primary: #00F0FF;
+  --color-background: #050505;
+  --color-surface: #111111;
+  --color-text: #EAEAEA;
+  --color-muted: #333333;
+  --color-accent: #00FF41;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Space Grotesk', sans-serif;
+  --radius: 0px;
+  --spacing: 4px;
+}
+```
+
+</details>
+
+---
+
+<details>
+<summary>Screen Specifications</summary>
+
+### Command Center
+
+**Purpose:** Root landing page providing system health, telemetry, and entry points.
+
+**Layout:** Three-column split: left navigation, center telemetry dashboard, right activity feed.
+
+**Key Elements:**
+- **Universal Layer Switcher:** Top-left 240px wide dropdown widget, glowing cyan border when active, toggles OS contexts.
+- **Telemetry Grid:** 2x2 grid of line charts showing API requests, DB load, error rates, and active workflows.
+- **Global Terminal:** Fixed bottom bar, 32px height, blinking block cursor `_`, accepts CLI commands.
+
+**States:**
+- **Empty:** "Awaiting telemetry data..." in monospace center screen.
+- **Loading:** Matrix-style cascading text placeholder.
+- **Error:** Red hex `#FF003C` border flash, "ERR_CONNECTION_REFUSED" readout.
+
+**Components:**
+- **Metric Card:** `h-120px`, `#111111` background, `#333333` border, neon cyan top border.
+
+**Interactions:**
+- **Click Universal Layer Switcher:** Expands fullscreen modal, blurs background, shows Design/Data/Logic gateways.
+- **Hover Metric Card:** Border brightens to `#00F0FF`, tooltip displays raw JSON payload.
+
+**Responsive:**
+- **Desktop:** Full 3-column layout, minimum width 1200px.
+- **Tablet:** Right sidebar hidden, terminal spans full width.
+- **Mobile:** Not supported. "Access via desktop terminal" overlay.
+
+### Design Layer
+
+**Purpose:** Visual interface construction with zero CSS abstraction.
+
+**Layout:** Left DOM tree panel (240px), center infinite canvas, right CSS/Props inspector (320px).
+
+**Key Elements:**
+- **Canvas Container:** Dotted background grid (`#333333` on `#050505`), ruler scales on top and left axes.
+- **DOM Explorer:** Nested text list, indentation `12px`, distinct bracket icons `[]` for divs, `<T>` for text.
+- **Style Inspector:** Dense two-column key-value inputs. Raw CSS input field at the bottom.
+
+**States:**
+- **Empty:** Blank grid, centered "Drag node from registry" prompt.
+- **Loading:** Wireframe skeleton overlays over canvas elements.
+- **Error:** Broken component renders as a red hashed box with stack trace tooltip.
+
+**Components:**
+- **Prop Input:** `h-24px`, `#050505` background, no border, bottom border only on focus (`#00F0FF`).
+
+**Interactions:**
+- **Click DOM Node:** Highlights node in canvas with `1px` solid `#00F0FF` outline.
+- **Hover Canvas Element:** Displays dashed `#333333` outline and absolute dimension tooltip (e.g., `[240x120]`).
+
+**Responsive:**
+- **Desktop:** Fixed panels, draggable canvas pan.
+- **Tablet:** Panels collapse into slide-out drawers.
+- **Mobile:** Not supported.
+
+### Data Layer
+
+**Purpose:** Headless CMS and database management.
+
+**Layout:** Left schema sidebar, expansive center data table, right API endpoint tester.
+
+**Key Elements:**
+- **Schema Explorer:** Tree view of collections and relational links.
+- **Record Table:** Extremely dense spreadsheet view, monospaced headers, alternating row backgrounds (`#050505`, `#0A0A0A`).
+- **Query Playground:** Integrated GraphiQL-style panel for testing queries against the selected collection.
+
+**States:**
+- **Empty:** "0 records found. Insert manual payload."
+- **Loading:** Blinking "QUERYING..." in top right corner.
+- **Error:** Inline cell turns red `#FF003C`, shows "Type Mismatch".
+
+**Components:**
+- **Table Cell:** `h-28px`, `px-8px`, truncates with `...`, double-click to edit raw JSON.
+
+**Interactions:**
+- **Click Add Record:** Appends new row at top, highlights first cell in cyan.
+- **Hover Relation Field:** Shows floating preview of the linked record's primary keys.
+
+**Responsive:**
+- **Desktop:** Full table view, sticky headers.
+- **Tablet:** Query playground hidden by default.
+- **Mobile:** Not supported.
+
+### Logic Layer
+
+**Purpose:** Node-based workflow automation and event routing.
+
+**Layout:** Fullscreen infinite node canvas, bottom sliding log console.
+
+**Key Elements:**
+- **Node Canvas:** Grid background, bezier curve connection lines (`#333333`, active `#00F0FF`).
+- **Logic Node:** `w-200px`, black background, `1px` border, input/output connection ports (circles, `8px`).
+- **Execution Terminal:** Bottom drawer, streams real-time stdout/stderr from node executions.
+
+**States:**
+- **Empty:** "Add Trigger Node" pulsing button in center.
+- **Loading:** Nodes pulse green `#00FF41` sequentially as data flows through them.
+- **Error:** Faulty node flashes red, execution stops, log terminal expands automatically.
+
+**Components:**
+- **Node Header:** `h-24px`, displays icon and step name, background matches service type (e.g., Database, HTTP).
+
+**Interactions:**
+- **Click Port:** Drag wire to connect to another node's port. Snap-to-grid behavior.
+- **Hover Wire:** Thicker stroke, adds "Cut" (scissors) icon in middle.
+
+**Responsive:**
+- **Desktop:** Infinite panning, scroll to zoom.
+- **Tablet:** Touch-drag to pan, pinch to zoom.
+- **Mobile:** Not supported.
+
+</details>
+
+---
+
+<details>
+<summary>Build Guide</summary>
+
+**Stack:** HTML + Tailwind CSS v3
+
+**Build Order:**
+1. **Global Shell & Layer Switcher** - Establishes the core layout, navigation paradigm, and global color/typography tokens.
+2. **Command Center** - Implements the base component library (cards, charts, terminal) and standardizes spacing.
+3. **Data Layer** - Builds the dense table structures and form inputs essential for the high-density HUD feel.
+4. **Logic Layer** - Introduces complex absolute positioning and canvas-based node interfaces.
+5. **Design Layer** - Combines the panel layouts, tree views, and canvas mechanics into the final complex view.
+
+</details>

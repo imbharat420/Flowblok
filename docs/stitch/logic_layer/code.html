@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flowblok OS | Logic Layer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #050507;
+            color: #FFFFFF;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dot-grid {
+            background-image: radial-gradient(#1e1e24 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        .node-line {
+            stroke: #2e3039;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+            font-size: 18px;
+        }
+
+        .terminal-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #2e3039;
+            border-radius: 2px;
+        }
+        
+        .node-card {
+            transition: border-color 0.2s ease, transform 0.1s ease;
+        }
+        .node-card:hover {
+            border-color: #737686;
+        }
+
+        @keyframes pulse-line {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -20; }
+        }
+
+        .active-connection {
+            stroke: #004ac6;
+            stroke-dasharray: 4, 6;
+            animation: pulse-line 1s linear infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-surface": "#2e3039",
+                      "surface-container-high": "#e7e7f3",
+                      "on-surface-variant": "#434655",
+                      "on-primary": "#ffffff",
+                      "outline": "#737686",
+                      "on-error-container": "#93000a",
+                      "dark-canvas": "#050507",
+                      "primary": "#004ac6",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "outline-variant": "#c3c6d7",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "tertiary-container": "#bc4800",
+                      "canvas": "#FFFFFF",
+                      "surface-container-low": "#f3f3fe",
+                      "on-tertiary-container": "#ffede6",
+                      "on-secondary-container": "#656464",
+                      "surface-bright": "#faf8ff",
+                      "on-tertiary-fixed-variant": "#7d2d00",
+                      "on-primary-fixed": "#00174b",
+                      "on-surface": "#191b23",
+                      "surface-dim": "#d9d9e5",
+                      "tertiary-fixed": "#ffdbcd",
+                      "surface-variant": "#e1e2ed",
+                      "on-primary-container": "#eeefff",
+                      "inverse-primary": "#b4c5ff",
+                      "secondary-fixed": "#e5e2e1",
+                      "error": "#ba1a1a",
+                      "on-secondary": "#ffffff",
+                      "on-background": "#191b23",
+                      "tertiary-fixed-dim": "#ffb596",
+                      "surface-container-highest": "#e1e2ed",
+                      "on-error": "#ffffff",
+                      "text-primary": "#111111",
+                      "on-tertiary-fixed": "#360f00",
+                      "border": "#EEEEEE",
+                      "tertiary": "#943700",
+                      "surface-container": "#ededf9",
+                      "primary-container": "#2563eb",
+                      "text-secondary": "#666666",
+                      "surface-tint": "#0053db",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-container": "#e5e2e1",
+                      "surface": "#FAFAFA",
+                      "background": "#faf8ff",
+                      "primary-fixed": "#dbe1ff",
+                      "on-tertiary": "#ffffff",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "on-secondary-fixed": "#1c1b1b",
+                      "error-container": "#ffdad6",
+                      "inverse-on-surface": "#f0f0fb",
+                      "on-secondary-fixed-variant": "#474646",
+                      "secondary": "#5f5e5e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "4px",
+                      "lg": "8px",
+                      "xl": "12px",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "max-width": "1200px",
+                      "margin-page": "40px",
+                      "base": "8px",
+                      "section-v": "120px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "display": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "label-caps": ["Inter"],
+                      "body-medium": ["Inter"],
+                      "headline": ["Inter"],
+                      "body": ["Inter"]
+              },
+              "fontSize": {
+                      "display": ["72px", {"lineHeight": "0.95", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                      "label-sm": ["13px", {"lineHeight": "1", "letterSpacing": "0em", "fontWeight": "500"}],
+                      "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                      "body-medium": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "500"}],
+                      "headline": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+      </script>
+</head>
+<body class="bg-dark-canvas text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full h-[56px] bg-dark-canvas border-b border-on-surface-variant flex items-center justify-between px-margin-page z-50">
+<div class="flex items-center gap-base">
+<span class="font-headline text-headline text-on-primary-fixed leading-none" style="font-size: 20px;">Flowblok OS</span>
+<div class="h-4 w-[1px] bg-on-surface-variant mx-2"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant">LOGIC LAYER</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<span class="font-label-caps text-label-caps text-primary-fixed-dim border-b-2 border-primary cursor-pointer py-4">Workspace</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors cursor-pointer py-4">Explorer</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary-fixed-dim transition-colors cursor-pointer py-4">Debugger</span>
+</div>
+<div class="flex items-center gap-base">
+<div class="cursor-pointer active:opacity-80 p-2 text-on-surface-variant hover:text-primary-fixed-dim transition-colors">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</div>
+<div class="cursor-pointer active:opacity-80 p-2 text-on-surface-variant hover:text-primary-fixed-dim transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</div>
+<button class="ml-2 px-4 py-1.5 bg-primary-container text-on-primary text-label-sm font-label-sm rounded hover:opacity-90 transition-opacity">
+                    Deploy
+                </button>
+</div>
+</div>
+</nav>
+<!-- SideNavBar (Workspace Active) -->
+<aside class="h-screen w-64 fixed left-0 top-[56px] border-r border-on-surface-variant bg-dark-canvas z-40 flex flex-col py-8 px-4 gap-base">
+<div class="mb-4 px-2">
+<h2 class="font-headline text-headline text-on-surface text-lg leading-tight">Project Alpha</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant">v1.0.4-stable</p>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-3 px-3 py-2 rounded text-primary-fixed-dim font-bold bg-inverse-surface cursor-pointer">
+<span class="material-symbols-outlined" data-icon="space_dashboard">space_dashboard</span>
+<span class="font-label-caps text-label-caps">Workspace</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-inverse-surface transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="folder_open">folder_open</span>
+<span class="font-label-caps text-label-caps">Explorer</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-inverse-surface transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="bug_report">bug_report</span>
+<span class="font-label-caps text-label-caps">Debugger</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-inverse-surface transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-label-caps text-label-caps">Source Control</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-inverse-surface transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="extension">extension</span>
+<span class="font-label-caps text-label-caps">Extensions</span>
+</div>
+</div>
+<div class="mt-auto border-t border-on-surface-variant pt-4 px-2">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-4">COMPONENTS</p>
+<div class="grid grid-cols-2 gap-2">
+<div class="p-2 border border-on-surface-variant rounded flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing hover:bg-inverse-surface transition-colors">
+<span class="material-symbols-outlined text-primary-fixed-dim" data-icon="webhook">webhook</span>
+<span class="text-[10px] font-label-caps uppercase">Hook</span>
+</div>
+<div class="p-2 border border-on-surface-variant rounded flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing hover:bg-inverse-surface transition-colors">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="schedule">schedule</span>
+<span class="text-[10px] font-label-caps uppercase">Cron</span>
+</div>
+<div class="p-2 border border-on-surface-variant rounded flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing hover:bg-inverse-surface transition-colors">
+<span class="material-symbols-outlined text-outline-variant" data-icon="database">database</span>
+<span class="text-[10px] font-label-caps uppercase">DB</span>
+</div>
+<div class="p-2 border border-on-surface-variant rounded flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing hover:bg-inverse-surface transition-colors">
+<span class="material-symbols-outlined text-outline-variant" data-icon="mail">mail</span>
+<span class="text-[10px] font-label-caps uppercase">SMTP</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Canvas Area -->
+<main class="fixed inset-0 left-64 top-[56px] bottom-10 dot-grid overflow-hidden">
+<!-- Logic Canvas SVG for lines -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none">
+<!-- Line Trigger to Action 1 -->
+<path class="node-line active-connection" d="M 120 100 C 200 100, 200 180, 280 180"></path>
+<!-- Line Action 1 to Action 2 -->
+<path class="node-line" d="M 440 180 C 500 180, 500 120, 560 120"></path>
+<!-- Line Action 1 to Action 3 -->
+<path class="node-line" d="M 440 180 C 500 180, 500 240, 560 240"></path>
+</svg>
+<!-- Node: Trigger -->
+<div class="absolute left-[40px] top-[80px] w-48 node-card bg-dark-canvas border border-on-surface-variant rounded-lg p-3 z-10 cursor-move">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-fixed-dim" data-icon="webhook">webhook</span>
+<span class="font-label-caps text-label-caps">Webhook Trigger</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-primary-fixed-dim"></span>
+</div>
+<div class="text-[11px] font-mono text-on-surface-variant mb-2">POST /api/v1/event</div>
+<div class="flex justify-end">
+<div class="w-3 h-3 border border-on-surface-variant bg-dark-canvas rounded-full -mr-4.5 mt-1"></div>
+</div>
+</div>
+<!-- Node: Logic / Transform -->
+<div class="absolute left-[280px] top-[160px] w-48 node-card bg-dark-canvas border border-on-surface-variant rounded-lg p-3 z-10 cursor-move">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="javascript">javascript</span>
+<span class="font-label-caps text-label-caps">Transform Data</span>
+</div>
+</div>
+<div class="text-[11px] font-mono text-on-surface-variant mb-2">map(payload =&gt; payload.data)</div>
+<div class="flex justify-between items-center">
+<div class="w-3 h-3 border border-on-surface-variant bg-dark-canvas rounded-full -ml-4.5"></div>
+<div class="w-3 h-3 border border-on-surface-variant bg-dark-canvas rounded-full -mr-4.5"></div>
+</div>
+</div>
+<!-- Node: Database Action -->
+<div class="absolute left-[560px] top-[100px] w-48 node-card bg-dark-canvas border border-on-surface-variant rounded-lg p-3 z-10 cursor-move">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline-variant" data-icon="database">database</span>
+<span class="font-label-caps text-label-caps">Upsert User</span>
+</div>
+</div>
+<div class="text-[11px] font-mono text-on-surface-variant mb-2">collection: 'users'</div>
+<div class="flex items-center">
+<div class="w-3 h-3 border border-on-surface-variant bg-dark-canvas rounded-full -ml-4.5"></div>
+</div>
+</div>
+<!-- Node: Email Action -->
+<div class="absolute left-[560px] top-[220px] w-48 node-card bg-dark-canvas border border-on-surface-variant rounded-lg p-3 z-10 cursor-move">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline-variant" data-icon="mail">mail</span>
+<span class="font-label-caps text-label-caps">Send Receipt</span>
+</div>
+</div>
+<div class="text-[11px] font-mono text-on-surface-variant mb-2">template: welcome_v2</div>
+<div class="flex items-center">
+<div class="w-3 h-3 border border-on-surface-variant bg-dark-canvas rounded-full -ml-4.5"></div>
+</div>
+</div>
+<!-- Floating Controls -->
+<div class="absolute bottom-12 right-12 flex gap-2">
+<button class="p-2 bg-inverse-surface border border-on-surface-variant rounded text-on-surface hover:bg-on-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="zoom_in">zoom_in</span>
+</button>
+<button class="p-2 bg-inverse-surface border border-on-surface-variant rounded text-on-surface hover:bg-on-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="zoom_out">zoom_out</span>
+</button>
+<button class="p-2 bg-inverse-surface border border-on-surface-variant rounded text-on-surface hover:bg-on-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="center_focus_strong">center_focus_strong</span>
+</button>
+</div>
+</main>
+<!-- Bottom Log Console -->
+<section class="fixed bottom-0 left-64 right-0 h-48 bg-dark-canvas border-t border-on-surface-variant z-50 flex flex-col transition-transform duration-300" id="terminal">
+<div class="h-8 px-4 flex items-center justify-between border-b border-on-surface-variant bg-dark-canvas">
+<div class="flex items-center gap-4">
+<span class="font-label-caps text-label-caps text-on-surface">TERMINAL</span>
+<div class="flex gap-2">
+<span class="text-[10px] text-on-surface-variant">Output</span>
+<span class="text-[10px] text-on-surface-variant">Problems (0)</span>
+<span class="text-[10px] text-primary-fixed-dim">Debug Console</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant cursor-pointer" data-icon="search">search</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant cursor-pointer" data-icon="close">close</span>
+</div>
+</div>
+<div class="flex-1 terminal-scroll overflow-y-auto p-4 font-mono text-[12px] leading-relaxed">
+<div class="flex gap-4">
+<span class="text-on-surface-variant">[12:04:22]</span>
+<span class="text-primary-fixed-dim">INFO</span>
+<span class="text-on-surface">Flowblok Runtime initialized. Ready for execution.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant">[12:04:23]</span>
+<span class="text-primary-fixed-dim">INFO</span>
+<span class="text-on-surface">Listening for events on /api/v1/event</span>
+</div>
+<div class="flex gap-4 mt-2">
+<span class="text-on-surface-variant">[12:05:01]</span>
+<span class="text-on-tertiary-container">EVENT</span>
+<span class="text-on-surface">Received POST request from 192.168.1.1</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant">[12:05:01]</span>
+<span class="text-on-tertiary-container">EXEC</span>
+<span class="text-on-surface">Executing node: <strong>Transform Data</strong>...</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant">[12:05:02]</span>
+<span class="text-on-tertiary-container">EXEC</span>
+<span class="text-on-surface">Executing node: <strong>Upsert User</strong>... Success (42ms)</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant">[12:05:02]</span>
+<span class="text-on-tertiary-container">EXEC</span>
+<span class="text-on-surface">Executing node: <strong>Send Receipt</strong>... Queued.</span>
+</div>
+<div class="flex gap-4 animate-pulse">
+<span class="text-on-surface-variant">_</span>
+</div>
+</div>
+</section>
+<!-- Footer / Status Bar -->
+<footer class="fixed bottom-0 w-full bg-dark-canvas border-t border-on-surface-variant flex justify-between items-center px-margin-page py-1 z-[60]">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Runtime: Active</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Latency: 12ms</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Telemetry: Enabled</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-opacity cursor-pointer">Docs</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-opacity cursor-pointer">API Status</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Flowblok OS © 2024</span>
+</div>
+</footer>
+<script>
+        // Micro-interactions for terminal toggle
+        const terminal = document.getElementById('terminal');
+        let isExpanded = true;
+
+        terminal.querySelector('[data-icon="close"]').addEventListener('click', () => {
+            if (isExpanded) {
+                terminal.style.transform = 'translateY(150px)';
+            } else {
+                terminal.style.transform = 'translateY(0)';
+            }
+            isExpanded = !isExpanded;
+        });
+
+        // Simple node dragging placeholder
+        document.querySelectorAll('.node-card').forEach(node => {
+            node.addEventListener('mousedown', (e) => {
+                node.style.zIndex = '100';
+                node.style.borderColor = '#004ac6';
+            });
+            document.addEventListener('mouseup', () => {
+                node.style.zIndex = '10';
+                node.style.borderColor = '';
+            });
+        });
+    </script>
+</body></html>
