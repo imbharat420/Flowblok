@@ -128,6 +128,41 @@ export interface WorkflowConnection {
   to: string; // node id
 }
 
+// ----- Identity, roles & access (super-admin management) -----
+
+export type Role = "owner" | "admin" | "manager" | "developer" | "editor" | "viewer";
+
+export type Capability =
+  | "view_dashboard"
+  | "manage_spaces"
+  | "edit_content"
+  | "edit_components"
+  | "edit_data"
+  | "manage_workflows"
+  | "manage_apis"
+  | "manage_crm"
+  | "manage_commerce"
+  | "use_ai"
+  | "view_analytics"
+  | "manage_marketplace"
+  | "manage_assets"
+  | "manage_users"
+  | "manage_settings"
+  | "manage_billing"
+  | "use_developer_mode";
+
+export type UserStatus = "active" | "invited" | "suspended";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  status: UserStatus;
+  avatarColor: string;
+  lastActive: string | null;
+}
+
 export type WorkflowStatus = "active" | "inactive" | "draft";
 
 export interface Workflow {

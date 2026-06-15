@@ -4,12 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GROUP_LABELS, NAV, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/cn";
+import { useAuth } from "@/lib/auth-context";
 import { ChevronsUpDown } from "lucide-react";
 
 const GROUP_ORDER: NavItem["group"][] = ["workspace", "build", "data", "grow", "system"];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { can } = useAuth();
+  // Only show modules the current role is allowed to manage (super admin sees all).
+  const visible = NAV.filter((n) => can(n.capability));
 
   return (
     <aside className="flex h-screen w-[248px] shrink-0 flex-col border-r border-border bg-surface">
@@ -26,10 +30,10 @@ export function Sidebar() {
       </button>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
-        {GROUP_ORDER.map((group) => (
+        {GROUP_ORDER.filter((g) => visible.some((n) => n.group === g)).map((group) => (
           <div key={group} className="mb-4">
             <p className="label-caps px-2.5 pb-1.5 pt-2">{GROUP_LABELS[group]}</p>
-            {NAV.filter((n) => n.group === group).map((item) => {
+            {visible.filter((n) => n.group === group).map((item) => {
               const href = `/${item.slug}`;
               const active = pathname === href || pathname.startsWith(href + "/");
               const Icon = item.icon;
@@ -49,11 +53,6 @@ export function Sidebar() {
                   )}
                   <Icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.2 : 1.8} />
                   <span className="flex-1 truncate">{item.label}</span>
-                  {!item.ready && (
-                    <span className="rounded bg-surface-3 px-1 text-[9px] font-medium uppercase tracking-wide text-fg-subtle">
-                      soon
-                    </span>
-                  )}
                 </Link>
               );
             })}
