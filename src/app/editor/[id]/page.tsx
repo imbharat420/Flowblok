@@ -19,6 +19,7 @@ import {
   updateProps,
 } from "@/lib/blocks";
 import type { BlockNode, ComponentDef, DataBinding, Story } from "@/lib/types";
+import { CONTEXT_PERSONAS, contextFor } from "@/lib/logic-presets";
 import {
   ChevronLeft,
   Monitor,
@@ -34,6 +35,7 @@ import {
   ArrowDown,
   Rocket,
   CloudUpload,
+  Eye,
 } from "lucide-react";
 
 const VIEWPORTS = {
@@ -58,6 +60,8 @@ export default function EditorPage() {
   const [pickerTarget, setPickerTarget] = useState<Path | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [persona, setPersona] = useState("pro-desktop");
+  const ctx = useMemo(() => contextFor(persona), [persona]);
 
   useEffect(() => {
     Promise.all([
@@ -196,6 +200,21 @@ export default function EditorPage() {
           })}
         </div>
 
+        {/* preview audience — drives the Logic tab's live show/hide on the canvas */}
+        <label className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1.5 text-[12px] text-fg-muted">
+          <Eye className="h-3.5 w-3.5" />
+          <span className="hidden lg:inline">Preview as</span>
+          <select
+            value={persona}
+            onChange={(e) => setPersona(e.target.value)}
+            className="max-w-[150px] bg-transparent text-[12px] font-medium text-fg outline-none"
+          >
+            {CONTEXT_PERSONAS.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+          </select>
+        </label>
+
         <button
           onClick={() => setHistoryOpen(true)}
           className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-fg-muted transition-colors hover:text-fg"
@@ -274,7 +293,7 @@ export default function EditorPage() {
         {/* canvas */}
         <div className="flex-1 overflow-y-auto bg-surface-2/40 p-6" onClick={() => setSelected(null)}>
           <div className="mx-auto rounded-lg border border-border bg-bg p-6 shadow-sm transition-all" style={{ maxWidth: VIEWPORTS[viewport].width }}>
-            <BlockRenderer node={tree} path={[]} selected={selected} onSelect={setSelected} />
+            <BlockRenderer node={tree} path={[]} selected={selected} onSelect={setSelected} ctx={ctx} />
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -297,7 +316,7 @@ export default function EditorPage() {
               <Trash2 className="h-3 w-3" /> Remove
             </button>
           )}
-          <Inspector node={selectedNode} def={selectedDef} active={tab} onActive={setTab} onProp={onProp} onBinding={onBinding} />
+          <Inspector node={selectedNode} def={selectedDef} active={tab} onActive={setTab} onProp={onProp} onBinding={onBinding} ctx={ctx} />
         </div>
       </div>
 

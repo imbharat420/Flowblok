@@ -45,6 +45,14 @@ export interface DataBinding {
   ref?: string; // table id / workflow id / endpoint id / product id / crm entity
   refLabel?: string;
   prompt?: string; // for AI source
+  // ----- method-aware API binding (source === "api") -----
+  apiEndpointId?: string;
+  apiMethod?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  apiKind?: "read" | "mutation";
+  apiTrigger?: string;
+  apiParams?: { key: string; value: string }[]; // path/query params for reads
+  apiBody?: { key: string; value: string }[]; // request-body map for mutations
+  apiResultTarget?: string; // where a mutation result surfaces
 }
 
 export interface Space {

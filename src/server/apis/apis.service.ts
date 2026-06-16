@@ -1,14 +1,37 @@
-// Service layer — business logic: filtering and derived stats.
+// Service layer — business logic: filtering, summary projection and derived stats.
 // Knows nothing about HTTP. Pure, testable, reusable from routes or RSC.
 
 import { ApisRepository, apisRepository } from "./apis.repository";
-import type { ApiEndpoint, HttpMethod } from "./apis.types";
+import type { ApiEndpoint, ApiAuth, HttpMethod } from "./apis.types";
+import type { EndpointProfile, ProfileAuth } from "./endpoint-profiles";
 
 const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "DELETE"];
 
 export interface ApisListQuery {
   method?: HttpMethod;
   search?: string;
+}
+
+// Catalog auth is lowercase (public/jwt/api_key); the explorer renders the
+// legacy "JWT"/"Public" badge — public stays Public, everything else is JWT.
+function authLabel(auth: ProfileAuth): ApiAuth {
+  return auth === "public" ? "Public" : "JWT";
+}
+
+// Project a full profile down to the summary the explorer + binder list consume.
+// `method` is widened at runtime to include PATCH; the explorer treats unknown
+// methods as a neutral badge, so this is safe.
+function toSummary(p: EndpointProfile): ApiEndpoint {
+  return {
+    id: p.id,
+    method: p.method as HttpMethod,
+    path: p.path,
+    resource: p.resource,
+    auth: authLabel(p.auth),
+    description: p.summary,
+    kind: p.kind,
+    summary: p.summary,
+  };
 }
 
 export class ApisService {
@@ -24,20 +47,22 @@ export class ApisService {
         (e) =>
           e.path.toLowerCase().includes(q) ||
           e.resource.toLowerCase().includes(q) ||
-          e.description.toLowerCase().includes(q),
+          e.summary.toLowerCase().includes(q),
       );
     }
 
     // Sort by resource, then path — stable, readable catalog ordering.
-    return [...items].sort(
-      (a, b) => a.resource.localeCompare(b.resource) || a.path.localeCompare(b.path),
-    );
+    return [...items]
+      .sort((a, b) => a.resource.localeCompare(b.resource) || a.path.localeCompare(b.path))
+      .map(toSummary);
   }
 
-  getById(id: string): ApiEndpoint | null {
+  getById(id: string): EndpointProfile | null {
     return this.repo.findById(id) ?? null;
   }
 
+  // Count only the four methods the explorer renders; PATCH is folded out so the
+  // Record<HttpMethod, number> stays exactly keyed.
   methodBreakdown(): Record<HttpMethod, number> {
     const base = METHODS.reduce<Record<HttpMethod, number>>(
       (acc, m) => {
@@ -47,7 +72,7 @@ export class ApisService {
       {} as Record<HttpMethod, number>,
     );
     return this.repo.findAll().reduce((acc, e) => {
-      acc[e.method] += 1;
+      if (METHODS.includes(e.method as HttpMethod)) acc[e.method as HttpMethod] += 1;
       return acc;
     }, base);
   }

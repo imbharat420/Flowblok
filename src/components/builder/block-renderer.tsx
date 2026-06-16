@@ -3,6 +3,7 @@
 import { cn } from "@/lib/cn";
 import type { BlockNode } from "@/lib/types";
 import { type Path, pathEq } from "@/lib/blocks";
+import { evaluateLogic, type LogicRule, type PreviewContext } from "@/lib/logic";
 
 function s(props: Record<string, unknown>, key: string, fallback = ""): string {
   const v = props[key];
@@ -14,13 +15,19 @@ export function BlockRenderer({
   path,
   selected,
   onSelect,
+  ctx,
 }: {
   node: BlockNode;
   path: Path;
   selected: Path | null;
   onSelect: (p: Path) => void;
+  ctx?: PreviewContext;
 }) {
   const isSelected = pathEq(selected, path);
+  const rule = node.props?._logic as LogicRule | undefined;
+  const hasLogic = !!rule && rule.conditions.length > 0;
+  // Hidden under the current preview audience (only when a ctx is supplied).
+  const logicHidden = !!ctx && hasLogic && !evaluateLogic(rule, ctx);
 
   const wrap = (children: React.ReactNode) => (
     <div
@@ -31,6 +38,7 @@ export function BlockRenderer({
       className={cn(
         "group relative cursor-pointer rounded-md transition-shadow",
         isSelected ? "shadow-[0_0_0_2px_var(--accent)]" : "hover:shadow-[0_0_0_1px_var(--border-strong)]",
+        logicHidden && "opacity-40 grayscale",
       )}
     >
       {isSelected && (
@@ -38,12 +46,23 @@ export function BlockRenderer({
           {node.component}
         </span>
       )}
+      {hasLogic && (
+        <span
+          title="This block has visibility logic"
+          className={cn(
+            "absolute -top-5 right-0 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+            logicHidden ? "bg-warn/20 text-warn" : "bg-surface-3 text-fg-muted",
+          )}
+        >
+          {logicHidden ? "hidden by logic" : "logic"}
+        </span>
+      )}
       {children}
     </div>
   );
 
   const kids = (node.children ?? []).map((c, i) => (
-    <BlockRenderer key={i} node={c} path={[...path, i]} selected={selected} onSelect={onSelect} />
+    <BlockRenderer key={i} node={c} path={[...path, i]} selected={selected} onSelect={onSelect} ctx={ctx} />
   ));
 
   switch (node.component) {
