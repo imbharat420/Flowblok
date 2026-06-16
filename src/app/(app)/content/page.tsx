@@ -77,7 +77,7 @@ function ContentModule() {
       }
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const story = (await res.json()) as Story;
-      router.push(`/content/${story.id}`);
+      router.push(`/editor/${story.id}`);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Failed to create story");
     } finally {
@@ -207,7 +207,7 @@ function ContentModule() {
                     data?.items.map((s) => (
                       <tr
                         key={s.id}
-                        onClick={() => router.push(`/content/${s.id}`)}
+                        onClick={() => router.push(`/editor/${s.id}`)}
                         className="cursor-pointer border-b border-border bg-bg transition-colors last:border-0 hover:bg-surface"
                       >
                         <td className="px-4 py-3">

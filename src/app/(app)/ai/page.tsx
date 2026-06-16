@@ -322,7 +322,7 @@ export default function AiPage() {
                       </div>
                       {story && (
                         <div className="mt-4 flex items-center gap-3">
-                          <Button variant="primary" size="md" onClick={() => router.push(`/content/${story.id}`)}>
+                          <Button variant="primary" size="md" onClick={() => router.push(`/editor/${story.id}`)}>
                             Open generated page <ArrowUpRight className="h-3.5 w-3.5" />
                           </Button>
                           <span className="text-[12px] text-fg-muted">

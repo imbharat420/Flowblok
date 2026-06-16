@@ -48,6 +48,20 @@ export function addChild(root: BlockNode, parentPath: Path, child: BlockNode): B
   return clone;
 }
 
+// Reorder a node among its siblings (dir -1 = up, +1 = down). Returns unchanged at boundaries.
+export function moveNode(root: BlockNode, path: Path, dir: -1 | 1): BlockNode {
+  if (path.length === 0) return root;
+  const clone: BlockNode = structuredClone(root);
+  let parent = clone;
+  for (let i = 0; i < path.length - 1; i++) parent = parent.children![path[i]];
+  const siblings = parent.children!;
+  const idx = path[path.length - 1];
+  const j = idx + dir;
+  if (j < 0 || j >= siblings.length) return root;
+  [siblings[idx], siblings[j]] = [siblings[j], siblings[idx]];
+  return clone;
+}
+
 export function removeNode(root: BlockNode, path: Path): BlockNode {
   if (path.length === 0) return root; // never remove root
   const clone: BlockNode = structuredClone(root);
