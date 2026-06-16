@@ -3,6 +3,8 @@
 import { cn } from "@/lib/cn";
 import type { BlockNode, ComponentDef, DataBinding, FieldDef } from "@/lib/types";
 import { DataBinder } from "./data-binder";
+import { LogicBuilder } from "./logic-builder";
+import type { LogicRule, PreviewContext } from "@/lib/logic";
 import { Paintbrush, Database, GitBranch, Shield, Zap, Search, Sparkles } from "lucide-react";
 
 export const INSPECTOR_TABS = [
@@ -26,6 +28,7 @@ export function Inspector({
   onActive,
   onProp,
   onBinding,
+  ctx,
 }: {
   node: BlockNode | null;
   def: ComponentDef | null;
@@ -33,6 +36,7 @@ export function Inspector({
   onActive: (t: TabKey) => void;
   onProp: (key: string, value: unknown) => void;
   onBinding: (b: DataBinding) => void;
+  ctx: PreviewContext;
 }) {
   const binding = node?.props?._binding as DataBinding | undefined;
 
@@ -80,13 +84,11 @@ export function Inspector({
             {active === "data" && <DataBinder binding={binding} onChange={onBinding} />}
 
             {active === "logic" && (
-              <div className="space-y-2 text-[13px]">
-                <p className="text-fg-muted">Conditional display & rules.</p>
-                <div className="rounded-md border border-border bg-bg p-2.5 font-mono text-[12px] text-fg-muted">
-                  Show this block <span className="text-fg">WHEN</span> user.role <span className="text-fg">=</span> &quot;member&quot;
-                </div>
-                <button className="text-[12px] text-accent">+ Add condition</button>
-              </div>
+              <LogicBuilder
+                rule={node.props._logic as LogicRule | undefined}
+                onChange={(r) => onProp("_logic", r)}
+                ctx={ctx}
+              />
             )}
 
             {active === "permissions" && (
