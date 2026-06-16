@@ -380,14 +380,14 @@ function DeveloperTab({ initial }: { initial: DeveloperToggle[] }) {
               disabled={pending === t.id}
               onClick={() => flip(t)}
               className={cn(
-                "relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50",
-                t.enabled ? "bg-accent" : "bg-surface-3",
+                "relative mt-0.5 h-5 w-9 shrink-0 rounded-full border transition-colors disabled:opacity-50",
+                t.enabled ? "border-accent bg-accent" : "border-border-strong bg-surface-3",
               )}
             >
               <span
                 className={cn(
-                  "absolute top-0.5 h-4 w-4 rounded-full bg-fg shadow-sm transition-transform",
-                  t.enabled ? "translate-x-[18px]" : "translate-x-0.5",
+                  "absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-white shadow-sm transition-[left]",
+                  t.enabled ? "left-[18px]" : "left-0.5",
                 )}
               />
             </button>

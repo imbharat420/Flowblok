@@ -5,6 +5,12 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-06-17
+### Fixed
+- Settings → Developer toggle switches: the knob anchored to its static position (so OFF/ON looked
+  the same and ON overflowed) and the track was nearly invisible in dark mode. Switched to explicit
+  `left` positions + a bordered track + centered knob.
+
 ## [0.7.0] — 2026-06-16
 **Block bindings: dynamic Logic, method-aware API binding, and an Events builder.**
 ### Added
@@ -89,7 +95,8 @@ not just displays it (PRD/FSD flows + 03-SECURITY-AND-ACCESS.md enforcement).
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/imbharat420/Flowblok/releases/tag/v0.7.1
 [0.7.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.7.0
 [0.6.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.6.0
 [0.5.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.5.0
