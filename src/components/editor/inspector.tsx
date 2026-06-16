@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import type { BlockNode, ComponentDef, DataBinding, FieldDef } from "@/lib/types";
 import { DataBinder } from "./data-binder";
 import { LogicBuilder } from "./logic-builder";
+import { EventsBuilder } from "./events-builder";
 import type { LogicRule, PreviewContext } from "@/lib/logic";
 import { Paintbrush, Database, GitBranch, Shield, Zap, Search, Sparkles } from "lucide-react";
 
@@ -104,14 +105,10 @@ export function Inspector({
             )}
 
             {active === "events" && (
-              <div className="space-y-2 text-[13px]">
-                <p className="text-fg-muted">Trigger actions on interaction.</p>
-                <div className="rounded-md border border-border bg-bg p-2.5">
-                  <span className="font-mono text-[12px] text-fg">onClick</span>
-                  <span className="text-fg-muted"> → run workflow “Track CTA”</span>
-                </div>
-                <button className="text-[12px] text-accent">+ Add event</button>
-              </div>
+              <EventsBuilder
+                handlers={node.props._events as import("@/lib/events").EventHandler[] | undefined}
+                onChange={(h) => onProp("_events", h)}
+              />
             )}
 
             {active === "seo" && (
