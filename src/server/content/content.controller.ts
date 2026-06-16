@@ -87,6 +87,21 @@ export class ContentController {
     if (!removed) return { status: 404, body: { error: "Story not found", id } };
     return { status: 200, body: { ok: true, id } };
   }
+
+  // GET /api/content/:id/versions
+  versions(id: string): ApiResult {
+    if (!this.service.getById(id)) return { status: 404, body: { error: "Story not found", id } };
+    return { status: 200, body: { items: this.service.versions(id) } };
+  }
+
+  // POST /api/content/:id/restore
+  restore(id: string, body: unknown): ApiResult {
+    const versionId = (body as { versionId?: string })?.versionId;
+    if (!versionId) return { status: 400, body: { error: "versionId is required" } };
+    const restored = this.service.restore(id, versionId);
+    if (!restored) return { status: 404, body: { error: "Story or version not found", id, versionId } };
+    return { status: 200, body: restored };
+  }
 }
 
 function numberParam(v: string | null): number | undefined {

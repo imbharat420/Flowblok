@@ -139,7 +139,7 @@ export default function PagesPage() {
               columns={columns}
               rows={filtered}
               getKey={(p) => p.id}
-              onRowClick={(p) => router.push(`/content/${p.id}`)}
+              onRowClick={(p) => router.push(`/editor/${p.id}`)}
               empty={
                 <EmptyState
                   icon={FileText}

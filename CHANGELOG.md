@@ -5,6 +5,19 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-06-16
+**Full-page, Storyblok-grade visual editor.**
+### Added
+- **Full-page editor** at `/editor/:id` (outside the app shell — own viewport + back button);
+  legacy `/content/:id` redirects here. Top bar: back · title+status · viewport toggles · History · Save · Publish.
+- **Block handles** in the Layers panel: select, move up/down, add-inside, remove (nested tree).
+- **Relocated "Add block"** from the inline panel into a searchable centered picker + canvas insert zone.
+- **Real Data binding** (Data tab): live pickers for Databases / Workflows / APIs / CRM / Commerce —
+  references actual flows, persisted on the block, no code.
+- **Version history**: every save snapshots a version; History drawer lists versions with one-click Restore.
+  Backend: `GET /api/content/:id/versions`, `POST /api/content/:id/restore`.
+- **Publish** action (status → published); `moveNode` reorder helper.
+
 ## [0.5.0] — 2026-06-16
 **Apply specs to code: real write paths + 3-layer RBAC enforcement.** The admin now manages state,
 not just displays it (PRD/FSD flows + 03-SECURITY-AND-ACCESS.md enforcement).
@@ -62,7 +75,8 @@ not just displays it (PRD/FSD flows + 03-SECURITY-AND-ACCESS.md enforcement).
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.6.0
 [0.5.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.5.0
 [0.4.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.4.0
 [0.3.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.3.0

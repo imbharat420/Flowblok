@@ -45,6 +45,14 @@ export class ContentService {
     return this.repo.remove(id) ?? null;
   }
 
+  versions(id: string): import("@/lib/types").StoryVersion[] {
+    return this.repo.listVersions(id);
+  }
+
+  restore(id: string, versionId: string): Story | null {
+    return this.repo.restore(id, versionId) ?? null;
+  }
+
   folders(): Folder[] {
     return this.repo.listFolders();
   }
