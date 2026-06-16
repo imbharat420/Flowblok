@@ -5,6 +5,21 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-06-16
+**Apply specs to code: real write paths + 3-layer RBAC enforcement.** The admin now manages state,
+not just displays it (PRD/FSD flows + 03-SECURITY-AND-ACCESS.md enforcement).
+### Added
+- **RBAC enforcement (layers 1 & 2)**: active role mirrored to an `fb_role` cookie;
+  `requireCapability()` server guard on every mutating route (403 when denied); `<RequireCapability>`
+  page guard blocks direct-URL access for under-privileged roles.
+- **Users** writes: invite member, change role, suspend/activate (`manage_users`).
+- **Content** writes: create (opens the builder) + delete; builder save now gated (`edit_content`).
+- **CRM** writes: create lead + move deals across the pipeline stages (`manage_crm`).
+- **AI**: one-prompt generation now creates a real draft Story and links straight to it (`use_ai`).
+- Guards added to the AI generate and Settings write routes (`use_ai` / `manage_settings`).
+### Verified
+- owner/editor/manager mutations return 201/200; under-privileged roles return 403.
+
 ## [0.4.0] — 2026-06-16
 **Full admin suite + super-admin RBAC.** All 16 modules are now live.
 ### Added
@@ -47,7 +62,8 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.5.0
 [0.4.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.4.0
 [0.3.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.3.0
 [0.2.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.2.0
