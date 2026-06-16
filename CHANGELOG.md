@@ -5,6 +5,19 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-06-17
+**Multi-space switcher + delete-to-archive (30-day restore).**
+### Added
+- **Notion-style space switcher** (top-left): colored space tiles, active checkmark, current-space header
+  with Settings, inline **New space** creation, and **Manage all spaces**. Active space persists in a cookie.
+- **Delete → 30-day archive**: Settings → Danger now opens a **type-to-confirm modal** that soft-deletes
+  the space into a 30-day archive (then routes to Spaces → Archived).
+- **Spaces page**: Active / Archived view toggle; archived rows show an **auto-delete countdown** + one-click
+  **Restore**; new-space modal; drawer delete archives with confirm.
+- Backend: `archivedAt`/`purgeAt` (now + 30 days) on spaces; `POST /api/spaces` (create),
+  `GET /api/spaces/archived`, `POST /api/spaces/:id/archive`, `POST /api/spaces/:id/restore`
+  (all mutations gated by `manage_spaces`).
+
 ## [0.7.1] — 2026-06-17
 ### Fixed
 - Settings → Developer toggle switches: the knob anchored to its static position (so OFF/ON looked
@@ -95,7 +108,8 @@ not just displays it (PRD/FSD flows + 03-SECURITY-AND-ACCESS.md enforcement).
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.8.0
 [0.7.1]: https://github.com/imbharat420/Flowblok/releases/tag/v0.7.1
 [0.7.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.7.0
 [0.6.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.6.0

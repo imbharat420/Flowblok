@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { GROUP_LABELS, NAV, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth-context";
-import { ChevronsUpDown } from "lucide-react";
+import { SpaceSwitcher } from "./space-switcher";
 
 const GROUP_ORDER: NavItem["group"][] = ["workspace", "build", "data", "grow", "system"];
 
@@ -17,17 +17,8 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-[248px] shrink-0 flex-col border-r border-border bg-surface">
-      {/* org / space switcher */}
-      <button className="m-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-surface-2">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-accent text-[13px] font-semibold text-accent-fg">
-          A
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-medium text-fg">Acme Digital</span>
-          <span className="block truncate text-[11px] text-fg-muted">Professional plan</span>
-        </span>
-        <ChevronsUpDown className="h-3.5 w-3.5 text-fg-subtle" />
-      </button>
+      {/* Notion-style multi-space switcher */}
+      <SpaceSwitcher />
 
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
         {GROUP_ORDER.filter((g) => visible.some((n) => n.group === g)).map((group) => (

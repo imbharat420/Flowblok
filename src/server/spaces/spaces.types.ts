@@ -11,6 +11,8 @@ export interface Space {
   members: number;
   region: string;
   createdAt: string; // ISO date
+  archivedAt?: string | null; // set when soft-deleted; null/absent when live
+  purgeAt?: string | null; // archivedAt + 30 days — permanent deletion deadline
 }
 
 export interface SpacesStats {
@@ -19,4 +21,10 @@ export interface SpacesStats {
   paused: number;
   totalMembers: number;
   plansInUse: number;
+}
+
+export interface CreateSpaceInput {
+  name: string;
+  plan?: SpacePlan;
+  region?: string;
 }
