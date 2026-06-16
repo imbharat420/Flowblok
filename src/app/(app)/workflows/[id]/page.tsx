@@ -28,7 +28,7 @@ export default function WorkflowCanvasPage() {
   const [runningId, setRunningId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
-  const drag = useRef<{ id: string; dx: number; dy: number } | null>(null);
+  const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -45,18 +45,14 @@ export default function WorkflowCanvasPage() {
   // ---- node dragging ----
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (!drag.current) return;
+      const d = drag.current;
+      if (!d) return;
+      // Read the canvas rect fresh each move so scrolling stays accurate.
+      const rect = d.el.getBoundingClientRect();
+      const x = Math.max(0, e.clientX - rect.left - d.offX);
+      const y = Math.max(0, e.clientY - rect.top - d.offY);
       setWf((prev) =>
-        prev
-          ? {
-              ...prev,
-              nodes: prev.nodes.map((n) =>
-                n.id === drag.current!.id
-                  ? { ...n, x: e.clientX - drag.current!.dx, y: e.clientY - drag.current!.dy }
-                  : n,
-              ),
-            }
-          : prev,
+        prev ? { ...prev, nodes: prev.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)) } : prev,
       );
     };
     const onUp = () => (drag.current = null);
@@ -71,7 +67,8 @@ export default function WorkflowCanvasPage() {
   const startDrag = (e: React.MouseEvent, n: WorkflowNode) => {
     const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
     const rect = canvas.getBoundingClientRect();
-    drag.current = { id: n.id, dx: e.clientX - (rect.left + n.x), dy: e.clientY - (rect.top + n.y) };
+    // Grab offset = pointer position INSIDE the node, in canvas coordinates.
+    drag.current = { id: n.id, offX: e.clientX - rect.left - n.x, offY: e.clientY - rect.top - n.y, el: canvas };
     setSelected(n.id);
   };
 
