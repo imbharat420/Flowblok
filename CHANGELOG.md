@@ -5,6 +5,20 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-06-16
+**Block bindings: dynamic Logic, method-aware API binding, and an Events builder.**
+### Added
+- **Logic tab** — dynamic condition builder (typed subject → operator → value, Show/Hide, ALL/ANY) with
+  a searchable library of **~90 prebuilt presets** across 8 scenario families (identity, role, plan/paywall,
+  device/responsive, campaign/A-B, commerce, locale/geo/consent, data-state). A **"Preview as" persona**
+  selector drives live show/hide on the canvas (hidden blocks dim + badge).
+- **Data tab → API** is now **method-aware**, driven by **120 endpoint profiles**: GET (read) → param inputs
+  + response-field map + read trigger; POST/PUT/PATCH/DELETE (mutation) → action trigger + request-body map
+  + result target. `GET /api/apis/:id` returns the full profile.
+- **Events tab** — dynamic trigger → actions builder with **73 action types** and **120 real-life recipes**
+  (navigation, forms→CRM, commerce, workflow/API/AI, UI feedback, analytics, social/media, auth).
+- Catalogs designed via parallel multi-agent passes; `icon.tsx` resolves any lucide icon by name.
+
 ## [0.6.0] — 2026-06-16
 **Full-page, Storyblok-grade visual editor.**
 ### Added
@@ -75,7 +89,8 @@ not just displays it (PRD/FSD flows + 03-SECURITY-AND-ACCESS.md enforcement).
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.7.0
 [0.6.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.6.0
 [0.5.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.5.0
 [0.4.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.4.0
