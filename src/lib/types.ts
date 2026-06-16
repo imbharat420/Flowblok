@@ -30,6 +30,23 @@ export interface Folder {
   storyCount: number;
 }
 
+// A saved snapshot of a story's content tree (version history).
+export interface StoryVersion {
+  id: string;
+  at: string; // ISO
+  author: string;
+  label: string;
+  content: BlockNode;
+}
+
+// Data-source binding persisted on a block (the Data tab).
+export interface DataBinding {
+  source: "static" | "database" | "api" | "workflow" | "ai" | "crm" | "commerce";
+  ref?: string; // table id / workflow id / endpoint id / product id / crm entity
+  refLabel?: string;
+  prompt?: string; // for AI source
+}
+
 export interface Space {
   id: string;
   name: string;
