@@ -2,7 +2,9 @@
 // Holds its own in-memory seed array. Swap for Prisma/Supabase without
 // touching the service or controller.
 
-import type { Space } from "./spaces.types";
+import type { CreateSpaceInput, Space } from "./spaces.types";
+
+const ARCHIVE_DAYS = 30;
 
 const spaces: Space[] = [
   {
@@ -86,6 +88,39 @@ export class SpacesRepository {
 
   findById(id: string): Space | undefined {
     return spaces.find((s) => s.id === id);
+  }
+
+  create(input: CreateSpaceInput): Space {
+    const space: Space = {
+      id: "spc_" + input.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 28) + "_" + (spaces.length + 1),
+      name: input.name,
+      plan: input.plan ?? "Starter",
+      status: "active",
+      members: 1,
+      region: input.region ?? "us-east-1",
+      createdAt: new Date().toISOString(),
+      archivedAt: null,
+      purgeAt: null,
+    };
+    spaces.unshift(space);
+    return space;
+  }
+
+  archive(id: string): Space | undefined {
+    const s = this.findById(id);
+    if (!s) return undefined;
+    const now = new Date();
+    s.archivedAt = now.toISOString();
+    s.purgeAt = new Date(now.getTime() + ARCHIVE_DAYS * 86400000).toISOString();
+    return s;
+  }
+
+  restore(id: string): Space | undefined {
+    const s = this.findById(id);
+    if (!s) return undefined;
+    s.archivedAt = null;
+    s.purgeAt = null;
+    return s;
   }
 }
 
