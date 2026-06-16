@@ -5,6 +5,22 @@ All notable changes to Flowblok are documented here. Releases are tagged on `mai
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-06-17
+**Account settings (full Storyblok-style account area).**
+### Added
+- The top-bar **user chip** now opens an account menu (avatar/name/email · **Account settings** · view-as-role · log out).
+- New full-page **`/account`** with a left section rail matching Storyblok:
+  - **Account** — avatar/upload, email, username + "show as collaborator", first/last name, Role
+    (Developer / Content Creator), connect GitHub — saved via `PUT /api/account/profile`.
+  - **Appearance** — theme mode + Default/Dark/Light-HC/Dark-HC picker (applies the theme).
+  - **Account Security** — change-password modal (user-entered, never pre-filled) + 2FA switch.
+  - **Personal Access Tokens** — list, generate (one-time reveal + copy), revoke.
+  - **Privacy** — telemetry switch, cookies / localStorage viewers, DPA.
+  - **Danger zone** — delete account with type-to-confirm.
+- Account backend (repository → service → controller) + `GET /api/account` and
+  `PUT/POST/DELETE` endpoints; token secrets returned only once and stripped from the snapshot.
+- Reusable `Switch` component.
+
 ## [0.8.0] — 2026-06-17
 **Multi-space switcher + delete-to-archive (30-day restore).**
 ### Added
@@ -108,7 +124,8 @@ not just displays it (PRD/FSD flows + 03-SECURITY-AND-ACCESS.md enforcement).
 - **Content** module: Storyblok-style stories list (folders rail, status tabs, search).
 - Layered API (controller → service → repository): `GET /api/content`, `/api/content/:id`, `/api/space`.
 
-[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/imbharat420/Flowblok/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.9.0
 [0.8.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.8.0
 [0.7.1]: https://github.com/imbharat420/Flowblok/releases/tag/v0.7.1
 [0.7.0]: https://github.com/imbharat420/Flowblok/releases/tag/v0.7.0

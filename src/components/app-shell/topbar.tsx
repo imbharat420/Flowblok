@@ -1,7 +1,8 @@
 "use client";
 
-import { Search, Bell, Sun, Moon, Plus, ShieldCheck, Check } from "lucide-react";
+import { Search, Bell, Sun, Moon, Plus, ShieldCheck, Check, Settings, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CommandPalette } from "./command-palette";
 import { useAuth } from "@/lib/auth-context";
 import { ROLES, ROLE_LABEL, isSuperAdmin } from "@/lib/rbac";
@@ -93,7 +94,27 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
         {roleOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setRoleOpen(false)} />
-            <div className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border-strong bg-surface shadow-xl">
+            <div className="absolute right-0 top-full z-50 mt-1 w-64 overflow-hidden rounded-lg border border-border-strong bg-surface shadow-xl">
+              {/* account header */}
+              <div className="flex items-center gap-2.5 border-b border-border px-3 py-2.5">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-semibold text-accent-fg">
+                  {user.name.charAt(0)}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-medium text-fg">{user.name}</span>
+                  <span className="block truncate text-[11px] text-fg-muted">{user.email}</span>
+                </span>
+              </div>
+              <div className="p-1">
+                <Link
+                  href="/account"
+                  onClick={() => setRoleOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[13px] text-fg-muted hover:bg-surface-2 hover:text-fg"
+                >
+                  <Settings className="h-3.5 w-3.5" /> Account settings
+                </Link>
+              </div>
+              <div className="border-t border-border" />
               <p className="label-caps px-3 pb-1 pt-2.5">View as role</p>
               {ROLES.map((r) => (
                 <button
@@ -112,6 +133,11 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
                   {user.role === r && <Check className="h-3.5 w-3.5 text-accent" />}
                 </button>
               ))}
+              <div className="mt-1 border-t border-border p-1">
+                <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] text-fg-muted hover:bg-surface-2 hover:text-fg">
+                  <LogOut className="h-3.5 w-3.5" /> Log out
+                </button>
+              </div>
             </div>
           </>
         )}
