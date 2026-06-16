@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth-context";
+import { useSpaces } from "@/lib/space-context";
+import { useRouter } from "next/navigation";
 import { REGIONS } from "@/server/settings/settings.types";
 import type {
   DeveloperToggle,
@@ -402,13 +404,13 @@ function DeveloperTab({ initial }: { initial: DeveloperToggle[] }) {
 
 function DangerTab({ spaceName }: { spaceName: string }) {
   const { can } = useAuth();
+  const { current, refresh } = useSpaces();
+  const router = useRouter();
   const allowed = can("manage_billing"); // owner / super admin only
-  const [confirming, setConfirming] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  const note = useMemo(
-    () => (allowed ? null : "Only the Owner can delete this space."),
-    [allowed],
-  );
+  const targetName = current?.name ?? spaceName;
+  const targetId = current?.id;
 
   return (
     <div className="rounded-lg border border-err/40 bg-err/5 p-5">
@@ -419,30 +421,107 @@ function DangerTab({ spaceName }: { spaceName: string }) {
         <div className="flex-1">
           <p className="text-[14px] font-medium text-fg">Delete this space</p>
           <p className="mt-1 text-[13px] text-fg-muted">
-            Permanently delete <span className="font-medium text-fg">{spaceName}</span>, including all
-            stories, components, assets and workflows. This action cannot be undone.
+            Delete <span className="font-medium text-fg">{targetName}</span>, including all stories,
+            components, assets and workflows. It moves to a <span className="text-fg">30-day archive</span>{" "}
+            where it can be restored from <span className="text-fg">Spaces → Archived</span> before it is
+            permanently purged.
           </p>
 
           <div className="mt-4 flex items-center gap-3">
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={!allowed}
-              onClick={() => (confirming ? undefined : setConfirming(true))}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              {confirming ? "Confirm — type to delete" : "Delete space"}
+            <Button variant="danger" size="sm" disabled={!allowed} onClick={() => setOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Delete space
             </Button>
-            {note && <span className="text-[12px] text-fg-subtle">{note}</span>}
-            {confirming && allowed && (
-              <button
-                onClick={() => setConfirming(false)}
-                className="text-[12px] text-fg-muted hover:text-fg"
-              >
-                Cancel
-              </button>
-            )}
+            {!allowed && <span className="text-[12px] text-fg-subtle">Only the Owner can delete this space.</span>}
           </div>
+        </div>
+      </div>
+
+      {open && allowed && targetId && (
+        <DeleteSpaceModal
+          spaceName={targetName}
+          onClose={() => setOpen(false)}
+          onArchive={async () => {
+            const res = await fetch(`/api/spaces/${targetId}/archive`, { method: "POST" });
+            if (!res.ok) return false;
+            await refresh();
+            return true;
+          }}
+          onDone={() => {
+            setOpen(false);
+            router.push("/spaces?view=archived");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeleteSpaceModal({
+  spaceName,
+  onClose,
+  onArchive,
+  onDone,
+}: {
+  spaceName: string;
+  onClose: () => void;
+  onArchive: () => Promise<boolean>;
+  onDone: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const match = typed.trim() === spaceName;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const submit = async () => {
+    if (!match || busy) return;
+    setBusy(true);
+    setError(null);
+    const ok = await onArchive();
+    setBusy(false);
+    if (ok) onDone();
+    else setError("You don't have permission to delete this space.");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[16vh]" onClick={onClose}>
+      <div className="w-full max-w-[460px] rounded-lg border border-err/40 bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
+          <span className="grid h-7 w-7 place-items-center rounded-md border border-err/40 bg-err/10 text-err">
+            <Trash2 className="h-3.5 w-3.5" />
+          </span>
+          <h2 className="text-[14px] font-medium text-fg">Delete {spaceName}?</h2>
+        </div>
+        <div className="space-y-3 p-4 text-[13px]">
+          <p className="text-fg-muted">
+            This space and all its content move to the archive. You have <span className="font-medium text-fg">30 days</span> to
+            restore it from <span className="text-fg">Spaces → Archived</span>; after that it is permanently deleted.
+          </p>
+          <label className="block">
+            <span className="mb-1 block text-[12px] text-fg-muted">
+              Type <span className="font-mono text-fg">{spaceName}</span> to confirm
+            </span>
+            <input
+              autoFocus
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+              className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-err"
+            />
+          </label>
+          {error && <p className="text-[12px] text-err">{error}</p>}
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="danger" size="sm" disabled={!match || busy} onClick={submit}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            {busy ? "Archiving…" : "Delete & archive"}
+          </Button>
         </div>
       </div>
     </div>
