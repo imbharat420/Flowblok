@@ -2,11 +2,16 @@
 
 import { Topbar } from "@/components/app-shell/topbar";
 import { StatusPill } from "@/components/ui/status-pill";
+import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/drawer";
+import { RequireCapability } from "@/components/require-capability";
 import { cn } from "@/lib/cn";
 import type { ContentStatus, Folder, Paginated, Story } from "@/lib/types";
-import { Folder as FolderIcon, Search, SlidersHorizontal, FileText } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Folder as FolderIcon, Search, SlidersHorizontal, FileText, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+const CONTENT_TYPES = ["page", "post", "product"] as const;
 
 interface ContentResponse extends Paginated<Story> {
   meta: {
@@ -23,29 +28,80 @@ const STATUS_TABS: Array<{ key: ContentStatus | "all"; label: string }> = [
   { key: "draft", label: "Draft" },
 ];
 
-export default function ContentPage() {
+function ContentModule() {
   const router = useRouter();
   const [data, setData] = useState<ContentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ContentStatus | "all">("all");
 
-  useEffect(() => {
+  // New-story drawer state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newType, setNewType] = useState<(typeof CONTENT_TYPES)[number]>("page");
+  const [creating, setCreating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const refetch = useCallback(() => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (status !== "all") params.set("status", status);
     setLoading(true);
-    const t = setTimeout(() => {
-      fetch(`/api/content?${params.toString()}`)
-        .then((r) => r.json())
-        .then((d: ContentResponse) => {
-          setData(d);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
-    }, 120);
-    return () => clearTimeout(t);
+    return fetch(`/api/content?${params.toString()}`)
+      .then((r) => r.json())
+      .then((d: ContentResponse) => {
+        setData(d);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [search, status]);
+
+  useEffect(() => {
+    const t = setTimeout(refetch, 120);
+    return () => clearTimeout(t);
+  }, [refetch]);
+
+  const createStory = useCallback(async () => {
+    if (!newName.trim() || creating) return;
+    setCreating(true);
+    setActionError(null);
+    try {
+      const res = await fetch("/api/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim(), contentType: newType }),
+      });
+      if (res.status === 403) {
+        setActionError("You don't have permission to create content.");
+        return;
+      }
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const story = (await res.json()) as Story;
+      router.push(`/content/${story.id}`);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to create story");
+    } finally {
+      setCreating(false);
+    }
+  }, [newName, newType, creating, router]);
+
+  const deleteStory = useCallback(
+    async (id: string) => {
+      setActionError(null);
+      try {
+        const res = await fetch(`/api/content/${id}`, { method: "DELETE" });
+        if (res.status === 403) {
+          setActionError("You don't have permission to delete content.");
+          return;
+        }
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        await refetch();
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : "Failed to delete story");
+      }
+    },
+    [refetch],
+  );
 
   return (
     <>
@@ -102,7 +158,25 @@ export default function ContentPage() {
               <button className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[12px] text-fg-muted transition-colors hover:text-fg">
                 <SlidersHorizontal className="h-3.5 w-3.5" /> Filters
               </button>
+
+              <button
+                onClick={() => {
+                  setActionError(null);
+                  setNewName("");
+                  setNewType("page");
+                  setCreateOpen(true);
+                }}
+                className="flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-[12px] font-medium text-accent-fg transition-colors hover:bg-accent-hover"
+              >
+                <Plus className="h-3.5 w-3.5" /> New
+              </button>
             </div>
+
+            {actionError && (
+              <div className="mb-3 rounded-md border border-err/40 bg-err/10 px-3 py-2 text-[12px] text-err">
+                {actionError}
+              </div>
+            )}
 
             {/* table */}
             <div className="overflow-hidden rounded-lg border border-border">
@@ -116,13 +190,14 @@ export default function ContentPage() {
                     <th className="hidden px-4 py-2.5 text-right font-medium text-fg-muted sm:table-cell">
                       Updated
                     </th>
+                    <th className="w-10 px-4 py-2.5" />
                   </tr>
                 </thead>
                 <tbody>
                   {loading &&
                     Array.from({ length: 6 }).map((_, i) => (
                       <tr key={i} className="border-b border-border last:border-0">
-                        <td colSpan={5} className="px-4 py-3">
+                        <td colSpan={6} className="px-4 py-3">
                           <div className="h-4 w-full animate-pulse rounded bg-surface-2" />
                         </td>
                       </tr>
@@ -154,12 +229,24 @@ export default function ContentPage() {
                             day: "numeric",
                           })}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void deleteStory(s.id);
+                            }}
+                            aria-label={`Delete ${s.name}`}
+                            className="grid h-7 w-7 place-items-center rounded-md text-fg-subtle transition-colors hover:bg-err/10 hover:text-err"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
 
                   {!loading && data?.items.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center">
+                      <td colSpan={6} className="px-4 py-12 text-center">
                         <p className="text-[14px] font-medium text-fg">No stories match</p>
                         <p className="mt-1 text-[13px] text-fg-muted">
                           Try a different search or status filter.
@@ -182,6 +269,64 @@ export default function ContentPage() {
           </div>
         </div>
       </main>
+
+      <Drawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="New story"
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="ghost" size="md" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => void createStory()}
+              disabled={!newName.trim() || creating}
+            >
+              {creating ? "Creating…" : "Create story"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label-caps mb-1.5 block">Name</label>
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void createStory()}
+              placeholder="e.g. Summer Landing Page"
+              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-[14px] text-fg outline-none transition-colors placeholder:text-fg-subtle focus:border-border-strong"
+            />
+          </div>
+          <div>
+            <label className="label-caps mb-1.5 block">Content type</label>
+            <select
+              value={newType}
+              onChange={(e) => setNewType(e.target.value as (typeof CONTENT_TYPES)[number])}
+              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-[14px] text-fg outline-none transition-colors focus:border-border-strong"
+            >
+              {CONTENT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+          {actionError && <p className="text-[12px] text-err">{actionError}</p>}
+        </div>
+      </Drawer>
     </>
+  );
+}
+
+export default function ContentPage() {
+  return (
+    <RequireCapability capability="edit_content" title="Content">
+      <ContentModule />
+    </RequireCapability>
   );
 }

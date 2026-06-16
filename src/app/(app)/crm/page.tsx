@@ -1,33 +1,41 @@
 "use client";
 
 import { Topbar } from "@/components/app-shell/topbar";
+import { RequireCapability } from "@/components/require-capability";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { Drawer } from "@/components/ui/drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
-import type {
-  Activity,
-  Company,
-  Contact,
-  DealStage,
-  PipelineColumn,
+import {
+  DEAL_STAGES,
+  type Activity,
+  type Company,
+  type Contact,
+  type Deal,
+  type DealStage,
+  type PipelineColumn,
 } from "@/server/crm/crm.types";
 import type { CrmKpis } from "@/server/crm/crm.service";
 import {
   Building2,
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
   KanbanSquare,
   Mail,
   Phone,
+  Plus,
   Users,
   Wallet,
   Trophy,
   Briefcase,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type TabKey = "pipeline" | "contacts" | "companies" | "activities";
 
@@ -68,13 +76,17 @@ export default function CrmPage() {
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [activities, setActivities] = useState<Activity[] | null>(null);
 
-  // Pipeline + KPIs load up-front (KPI row is always visible).
-  useEffect(() => {
-    fetch("/api/crm/pipeline")
+  const refetchPipeline = useCallback(() => {
+    return fetch("/api/crm/pipeline")
       .then((r) => r.json())
       .then((d: PipelineResponse) => setPipeline(d))
       .catch(() => setPipeline({ columns: [], kpis: { openDeals: 0, pipelineValue: 0, wonValue: 0, contacts: 0 } }));
   }, []);
+
+  // Pipeline + KPIs load up-front (KPI row is always visible).
+  useEffect(() => {
+    void refetchPipeline();
+  }, [refetchPipeline]);
 
   // Lazy-load each tab's data on first visit.
   useEffect(() => {
@@ -141,7 +153,7 @@ export default function CrmPage() {
   ];
 
   return (
-    <>
+    <RequireCapability capability="manage_crm" title="CRM">
       <Topbar title="CRM" breadcrumb={["Acme Digital"]} />
       <main className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-[1200px]">
@@ -173,7 +185,7 @@ export default function CrmPage() {
 
           {/* Pipeline — 5 Kanban columns */}
           {tab === "pipeline" && (
-            <PipelineBoard columns={pipeline?.columns ?? null} />
+            <PipelineBoard columns={pipeline?.columns ?? null} onChanged={refetchPipeline} />
           )}
 
           {/* Contacts */}
@@ -212,11 +224,50 @@ export default function CrmPage() {
           {tab === "activities" && <ActivityList activities={activities} />}
         </div>
       </main>
-    </>
+    </RequireCapability>
   );
 }
 
-function PipelineBoard({ columns }: { columns: PipelineColumn[] | null }) {
+function PipelineBoard({
+  columns,
+  onChanged,
+}: {
+  columns: PipelineColumn[] | null;
+  onChanged: () => Promise<void> | void;
+}) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Move a deal one stage left/right, then refetch the board.
+  async function move(deal: Deal, dir: -1 | 1) {
+    const idx = DEAL_STAGES.indexOf(deal.stage);
+    const next = DEAL_STAGES[idx + dir];
+    if (!next) return;
+    setBusyId(deal.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/crm/deals/${deal.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: next }),
+      });
+      if (res.status === 403) {
+        setError("You don't have permission to move deals.");
+        return;
+      }
+      if (!res.ok) {
+        setError("Couldn't move the deal. Try again.");
+        return;
+      }
+      await onChanged();
+    } catch {
+      setError("Couldn't move the deal. Try again.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (columns === null) {
     return (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -228,39 +279,207 @@ function PipelineBoard({ columns }: { columns: PipelineColumn[] | null }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      {columns.map((col) => (
-        <div key={col.stage} className="flex flex-col rounded-lg border border-border bg-surface-2/40">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-            <Badge tone={STAGE_TONE[col.stage]} dot>
-              {col.stage}
-            </Badge>
-            <span className="nums text-[11px] text-fg-subtle">{col.count}</span>
-          </div>
-          <div className="border-b border-border px-3 py-2">
-            <span className="nums text-[12px] font-medium text-fg-muted">{usd(col.value)}</span>
-          </div>
-          <div className="flex flex-1 flex-col gap-2 p-2">
-            {col.deals.length === 0 && (
-              <p className="px-1 py-6 text-center text-[12px] text-fg-subtle">No deals</p>
-            )}
-            {col.deals.map((d) => (
-              <div
-                key={d.id}
-                className={cn(
-                  "rounded-md border border-border bg-surface p-2.5 transition-colors",
-                  "hover:border-border-strong",
-                )}
-              >
-                <p className="text-[13px] font-medium text-fg">{d.name}</p>
-                <p className="mt-0.5 text-[12px] text-fg-muted">{d.company}</p>
-                <p className="nums mt-1.5 text-[12px] font-medium text-fg">{usd(d.value)}</p>
+    <>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        {error ? (
+          <p className="text-[12px] text-err">{error}</p>
+        ) : (
+          <span />
+        )}
+        <Button size="sm" variant="primary" onClick={() => setAddOpen(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          Add lead
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {columns.map((col) => {
+          const stageIdx = DEAL_STAGES.indexOf(col.stage);
+          return (
+            <div key={col.stage} className="flex flex-col rounded-lg border border-border bg-surface-2/40">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+                <Badge tone={STAGE_TONE[col.stage]} dot>
+                  {col.stage}
+                </Badge>
+                <span className="nums text-[11px] text-fg-subtle">{col.count}</span>
               </div>
-            ))}
-          </div>
+              <div className="border-b border-border px-3 py-2">
+                <span className="nums text-[12px] font-medium text-fg-muted">{usd(col.value)}</span>
+              </div>
+              <div className="flex flex-1 flex-col gap-2 p-2">
+                {col.deals.length === 0 && (
+                  <p className="px-1 py-6 text-center text-[12px] text-fg-subtle">No deals</p>
+                )}
+                {col.deals.map((d) => (
+                  <div
+                    key={d.id}
+                    className={cn(
+                      "rounded-md border border-border bg-surface p-2.5 transition-colors",
+                      "hover:border-border-strong",
+                    )}
+                  >
+                    <p className="text-[13px] font-medium text-fg">{d.name}</p>
+                    <p className="mt-0.5 text-[12px] text-fg-muted">{d.company}</p>
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <p className="nums text-[12px] font-medium text-fg">{usd(d.value)}</p>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label="Move to previous stage"
+                          disabled={stageIdx === 0 || busyId === d.id}
+                          onClick={() => move(d, -1)}
+                          className="grid h-6 w-6 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Move to next stage"
+                          disabled={col.stage === "Won" || busyId === d.id}
+                          onClick={() => move(d, 1)}
+                          className="grid h-6 w-6 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <AddLeadDrawer
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={async () => {
+          setAddOpen(false);
+          await onChanged();
+        }}
+        onForbidden={() => {
+          setAddOpen(false);
+          setError("You don't have permission to create leads.");
+        }}
+      />
+    </>
+  );
+}
+
+function AddLeadDrawer({
+  open,
+  onClose,
+  onCreated,
+  onForbidden,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => Promise<void> | void;
+  onForbidden: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [value, setValue] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset fields whenever the drawer opens.
+  useEffect(() => {
+    if (open) {
+      setName("");
+      setCompany("");
+      setValue("");
+      setError(null);
+    }
+  }, [open]);
+
+  async function submit() {
+    if (name.trim() === "") {
+      setError("Name is required.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/crm/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          company: company.trim(),
+          value: Number(value) || 0,
+        }),
+      });
+      if (res.status === 403) {
+        onForbidden();
+        return;
+      }
+      if (!res.ok) {
+        setError("Couldn't create the lead. Try again.");
+        return;
+      }
+      await onCreated();
+    } catch {
+      setError("Couldn't create the lead. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const inputCls =
+    "w-full rounded-md border border-border bg-bg px-3 py-2 text-[13px] text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none";
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title="Add lead"
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} disabled={submitting}>
+            {submitting ? "Creating…" : "Create lead"}
+          </Button>
         </div>
-      ))}
-    </div>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12px] font-medium text-fg-muted">Name</span>
+          <input
+            className={inputCls}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Deal name"
+            autoFocus
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12px] font-medium text-fg-muted">Company</span>
+          <input
+            className={inputCls}
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Company"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12px] font-medium text-fg-muted">Value (USD)</span>
+          <input
+            className={inputCls}
+            type="number"
+            min="0"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="0"
+          />
+        </label>
+        {error && <p className="text-[12px] text-err">{error}</p>}
+      </div>
+    </Drawer>
   );
 }
 

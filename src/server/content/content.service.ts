@@ -37,6 +37,14 @@ export class ContentService {
     return this.repo.update(id, input) ?? null;
   }
 
+  create(input: { name: string; contentType?: string }): Story {
+    return this.repo.create(input);
+  }
+
+  remove(id: string): Story | null {
+    return this.repo.remove(id) ?? null;
+  }
+
   folders(): Folder[] {
     return this.repo.listFolders();
   }

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
+import { RequireCapability } from "@/components/require-capability";
 import { Tabs } from "@/components/ui/tabs";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -28,7 +29,7 @@ import {
   CircleSlash,
   MailCheck,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface UsersResponse {
   items: User[];
@@ -95,15 +96,44 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// Shared writer for the invite/role/status mutations. Surfaces a 403 (e.g. when
+// previewing as a non-admin role) as an inline message and otherwise refetches.
+async function writeUser(
+  url: string,
+  method: "POST" | "PUT",
+  body: Record<string, unknown>,
+  refetch: () => Promise<void> | void,
+  onWriteError: (msg: string | null) => void,
+): Promise<boolean> {
+  onWriteError(null);
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    onWriteError(
+      res.status === 403
+        ? "You don't have permission to manage users in the current role."
+        : (err?.error as string) ?? "Something went wrong saving your change.",
+    );
+    return false;
+  }
+  await refetch();
+  return true;
+}
+
 export default function UsersPage() {
   const [tab, setTab] = useState<string>("members");
   const [data, setData] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [writeError, setWriteError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const refetch = useCallback(() => {
     setLoading(true);
-    fetch("/api/users")
+    return fetch("/api/users")
       .then((r) => r.json())
       .then((d: UsersResponse) => {
         setData(d);
@@ -112,8 +142,12 @@ export default function UsersPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
   return (
-    <>
+    <RequireCapability capability="manage_users" title="Users & Roles">
       <Topbar title="Users & Roles" breadcrumb={["Acme Digital"]} />
       <main className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-[1200px]">
@@ -127,20 +161,37 @@ export default function UsersPage() {
             }
           />
 
+          {writeError && (
+            <div className="mb-4 flex items-center gap-2 rounded-md border border-err/40 bg-err/10 px-3 py-2 text-[12px] text-err">
+              {writeError}
+            </div>
+          )}
+
           <div className="mb-5">
             <Tabs tabs={TABS} active={tab} onChange={setTab} />
           </div>
 
           {tab === "members" ? (
-            <MembersTab data={data} loading={loading} onInvite={() => setInviteOpen(true)} />
+            <MembersTab
+              data={data}
+              loading={loading}
+              onInvite={() => setInviteOpen(true)}
+              refetch={refetch}
+              onWriteError={setWriteError}
+            />
           ) : (
             <RolesTab roleBreakdown={data?.meta.roleBreakdown} />
           )}
         </div>
       </main>
 
-      <InviteDrawer open={inviteOpen} onClose={() => setInviteOpen(false)} />
-    </>
+      <InviteDrawer
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        refetch={refetch}
+        onWriteError={setWriteError}
+      />
+    </RequireCapability>
   );
 }
 
@@ -152,11 +203,23 @@ function MembersTab({
   data,
   loading,
   onInvite,
+  refetch,
+  onWriteError,
 }: {
   data: UsersResponse | null;
   loading: boolean;
   onInvite: () => void;
+  refetch: () => Promise<void> | void;
+  onWriteError: (msg: string | null) => void;
 }) {
+  function changeRole(u: User, role: Role) {
+    void writeUser(`/api/users/${u.id}`, "PUT", { role }, refetch, onWriteError);
+  }
+  function toggleStatus(u: User) {
+    const status: UserStatus = u.status === "suspended" ? "active" : "suspended";
+    void writeUser(`/api/users/${u.id}`, "PUT", { status }, refetch, onWriteError);
+  }
+
   const columns: Column<User>[] = useMemo(
     () => [
       {
@@ -183,7 +246,22 @@ function MembersTab({
       {
         key: "role",
         header: "Role",
-        render: (u) => <Badge tone="accent">{ROLE_LABEL[u.role]}</Badge>,
+        render: (u) =>
+          u.role === "owner" ? (
+            <Badge tone="accent">{ROLE_LABEL[u.role]}</Badge>
+          ) : (
+            <select
+              value={u.role}
+              onChange={(e) => changeRole(u, e.target.value as Role)}
+              className="rounded-md border border-border bg-bg px-2 py-1 text-[12px] text-fg outline-none transition-colors focus:border-border-strong"
+            >
+              {ROLES.filter((r) => r !== "owner").map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          ),
       },
       {
         key: "status",
@@ -204,7 +282,32 @@ function MembersTab({
         className: "nums text-[12px] text-fg-subtle",
         render: (u) => relativeTime(u.lastActive),
       },
+      {
+        key: "actions",
+        header: "",
+        align: "right",
+        render: (u) =>
+          u.role === "owner" ? null : (
+            <Button
+              variant={u.status === "suspended" ? "secondary" : "danger"}
+              size="sm"
+              onClick={() => toggleStatus(u)}
+            >
+              {u.status === "suspended" ? (
+                <>
+                  <Check className="h-3.5 w-3.5" /> Activate
+                </>
+              ) : (
+                <>
+                  <CircleSlash className="h-3.5 w-3.5" /> Suspend
+                </>
+              )}
+            </Button>
+          ),
+      },
     ],
+    // changeRole/toggleStatus are stable across renders for our purposes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -368,18 +471,40 @@ function RolesTab({ roleBreakdown }: { roleBreakdown?: Record<Role, number> }) {
 /* Invite drawer                                                       */
 /* ------------------------------------------------------------------ */
 
-function InviteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+function InviteDrawer({
+  open,
+  onClose,
+  refetch,
+  onWriteError,
+}: {
+  open: boolean;
+  onClose: () => void;
+  refetch: () => Promise<void> | void;
+  onWriteError: (msg: string | null) => void;
+}) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("editor");
+  const [sending, setSending] = useState(false);
 
   // Owner can't be assigned on invite — it's a single super-admin seat.
   const assignableRoles = ROLES.filter((r) => r !== "owner");
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  function handleClose() {
+  function reset() {
     setEmail("");
     setRole("editor");
+  }
+
+  function handleClose() {
+    reset();
     onClose();
+  }
+
+  async function handleSend() {
+    setSending(true);
+    const ok = await writeUser("/api/users", "POST", { email, role }, refetch, onWriteError);
+    setSending(false);
+    if (ok) handleClose();
   }
 
   return (
@@ -392,8 +517,8 @@ function InviteDrawer({ open, onClose }: { open: boolean; onClose: () => void })
           <Button variant="ghost" onClick={handleClose}>
             Cancel
           </Button>
-          <Button variant="primary" disabled={!valid} onClick={handleClose}>
-            <MailCheck className="h-3.5 w-3.5" /> Send invite
+          <Button variant="primary" disabled={!valid || sending} onClick={handleSend}>
+            <MailCheck className="h-3.5 w-3.5" /> {sending ? "Sending…" : "Send invite"}
           </Button>
         </div>
       }

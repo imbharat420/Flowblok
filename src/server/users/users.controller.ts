@@ -44,6 +44,55 @@ export class UsersController {
     if (!user) return { status: 404, body: { error: "User not found", id } };
     return { status: 200, body: user };
   }
+
+  // POST /api/users — invite a new member
+  create(body: unknown): ApiResult {
+    if (!body || typeof body !== "object") {
+      return { status: 400, body: { error: "Invalid body" } };
+    }
+    const { name, email, role } = body as Record<string, unknown>;
+
+    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { status: 400, body: { error: "A valid email is required" } };
+    }
+    if (!ROLES.includes(role as Role) || role === "owner") {
+      return { status: 400, body: { error: "Invalid role" } };
+    }
+
+    const user = this.service.invite({
+      name: typeof name === "string" ? name : undefined,
+      email,
+      role: role as Role,
+    });
+    return { status: 201, body: user };
+  }
+
+  // PUT /api/users/:id — change role and/or status
+  update(id: string, body: unknown): ApiResult {
+    if (!body || typeof body !== "object") {
+      return { status: 400, body: { error: "Invalid body" } };
+    }
+    const { role, status } = body as Record<string, unknown>;
+    const patch: { role?: Role; status?: UserStatus } = {};
+
+    if (role !== undefined) {
+      if (!ROLES.includes(role as Role)) return { status: 400, body: { error: "Invalid role" } };
+      patch.role = role as Role;
+    }
+    if (status !== undefined) {
+      if (!STATUSES.includes(status as UserStatus)) {
+        return { status: 400, body: { error: "Invalid status" } };
+      }
+      patch.status = status as UserStatus;
+    }
+    if (patch.role === undefined && patch.status === undefined) {
+      return { status: 400, body: { error: "Nothing to update" } };
+    }
+
+    const updated = this.service.updateUser(id, patch);
+    if (!updated) return { status: 404, body: { error: "User not found", id } };
+    return { status: 200, body: updated };
+  }
 }
 
 export const usersController = new UsersController();

@@ -25,6 +25,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Story } from "@/lib/types";
+
+// First ~6 words of the prompt, title-cased-ish — used as the generated page name.
+function titleFromPrompt(prompt: string): string {
+  const words = prompt.trim().split(/\s+/).slice(0, 6).join(" ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 const EXAMPLES = [
   "Create a luxury school website with admissions + CRM",
@@ -68,34 +76,57 @@ const LAYERS = ["Database", "Pages", "Components", "Workflows", "APIs"];
 type Phase = "idle" | "running" | "done";
 
 export default function AiPage() {
+  const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [steps, setSteps] = useState<GenerationStep[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1); // index being processed
   const [error, setError] = useState<string | null>(null);
+  const [story, setStory] = useState<Story | null>(null); // the real generated page
 
-  const runTimeline = useCallback((plan: GenerationStep[]) => {
-    let i = 0;
-    const tick = () => {
-      setCurrentIndex(i);
-      window.setTimeout(() => {
-        i += 1;
-        if (i < plan.length) {
-          tick();
-        } else {
-          setCurrentIndex(plan.length); // all complete
-          setPhase("done");
-        }
-      }, 500);
-    };
-    tick();
+  // Create the real Content story once the timeline completes.
+  const finishGeneration = useCallback(async (sourcePrompt: string) => {
+    try {
+      const res = await fetch("/api/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: titleFromPrompt(sourcePrompt), contentType: "page" }),
+      });
+      if (res.status === 403) throw new Error("Your role can't create content.");
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      setStory((await res.json()) as Story);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create the generated page");
+    }
   }, []);
+
+  const runTimeline = useCallback(
+    (plan: GenerationStep[], sourcePrompt: string) => {
+      let i = 0;
+      const tick = () => {
+        setCurrentIndex(i);
+        window.setTimeout(() => {
+          i += 1;
+          if (i < plan.length) {
+            tick();
+          } else {
+            setCurrentIndex(plan.length); // all complete
+            setPhase("done");
+            void finishGeneration(sourcePrompt);
+          }
+        }, 500);
+      };
+      tick();
+    },
+    [finishGeneration],
+  );
 
   const generate = useCallback(async () => {
     if (!prompt.trim() || phase === "running") return;
     setError(null);
     setPhase("running");
     setSteps([]);
+    setStory(null);
     setCurrentIndex(-1);
 
     try {
@@ -107,7 +138,7 @@ export default function AiPage() {
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const data = (await res.json()) as { steps: GenerationStep[] };
       setSteps(data.steps);
-      runTimeline(data.steps);
+      runTimeline(data.steps, prompt);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
       setPhase("idle");
@@ -117,6 +148,7 @@ export default function AiPage() {
   const reset = useCallback(() => {
     setPhase("idle");
     setSteps([]);
+    setStory(null);
     setCurrentIndex(-1);
     setError(null);
   }, []);
@@ -288,6 +320,17 @@ export default function AiPage() {
                           </Badge>
                         ))}
                       </div>
+                      {story && (
+                        <div className="mt-4 flex items-center gap-3">
+                          <Button variant="primary" size="md" onClick={() => router.push(`/content/${story.id}`)}>
+                            Open generated page <ArrowUpRight className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className="text-[12px] text-fg-muted">
+                            “{story.name}” added to{" "}
+                            <span className="font-mono text-fg-subtle">/content/{story.slug}</span>
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
