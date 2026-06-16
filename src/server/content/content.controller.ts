@@ -64,6 +64,29 @@ export class ContentController {
     if (!updated) return { status: 404, body: { error: "Story not found", id } };
     return { status: 200, body: updated };
   }
+
+  // POST /api/content
+  create(body: unknown): ApiResult {
+    if (!body || typeof body !== "object") {
+      return { status: 400, body: { error: "Invalid body" } };
+    }
+    const { name, contentType } = body as Record<string, unknown>;
+    if (typeof name !== "string" || !name.trim()) {
+      return { status: 400, body: { error: "Name is required" } };
+    }
+    const story = this.service.create({
+      name: name.trim(),
+      contentType: typeof contentType === "string" ? contentType : undefined,
+    });
+    return { status: 201, body: story };
+  }
+
+  // DELETE /api/content/:id
+  remove(id: string): ApiResult {
+    const removed = this.service.remove(id);
+    if (!removed) return { status: 404, body: { error: "Story not found", id } };
+    return { status: 200, body: { ok: true, id } };
+  }
 }
 
 function numberParam(v: string | null): number | undefined {

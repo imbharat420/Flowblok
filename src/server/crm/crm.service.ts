@@ -3,7 +3,7 @@
 
 import { CrmRepository, crmRepository } from "./crm.repository";
 import { DEAL_STAGES } from "./crm.types";
-import type { Activity, Company, Contact, Deal, PipelineColumn } from "./crm.types";
+import type { Activity, Company, Contact, Deal, DealStage, PipelineColumn } from "./crm.types";
 
 export interface CrmKpis {
   openDeals: number;
@@ -31,6 +31,17 @@ export class CrmService {
 
   deals(): Deal[] {
     return this.repo.findDeals();
+  }
+
+  /** Create a new lead — always lands in the first stage ("New Lead"). */
+  createLead(input: { name: string; company: string; value: number }): Deal {
+    return this.repo.createDeal({ ...input, stage: "New Lead" });
+  }
+
+  /** Move a deal to another stage. Returns undefined if the deal is missing. */
+  moveDeal(id: string, stage: DealStage): Deal | undefined {
+    if (!DEAL_STAGES.includes(stage)) return undefined;
+    return this.repo.moveDeal(id, stage);
   }
 
   contacts(): Contact[] {

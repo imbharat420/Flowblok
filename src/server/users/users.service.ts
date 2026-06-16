@@ -1,7 +1,12 @@
 // Service layer — business logic: filtering, search, derived stats.
 // Knows nothing about HTTP. Pure, testable, reusable from API routes or RSC.
 
-import { UsersRepository, usersRepository } from "./users.repository";
+import {
+  UsersRepository,
+  usersRepository,
+  type CreateUserInput,
+  type UpdateUserPatch,
+} from "./users.repository";
 import type { Role, User, UserStatus } from "@/lib/types";
 
 export interface UsersQuery {
@@ -31,6 +36,14 @@ export class UsersService {
 
   getById(id: string): User | null {
     return this.repo.findById(id) ?? null;
+  }
+
+  invite(input: CreateUserInput): User {
+    return this.repo.create(input);
+  }
+
+  updateUser(id: string, patch: UpdateUserPatch): User | null {
+    return this.repo.update(id, patch) ?? null;
   }
 
   /** counts by status — feeds the members KPI strip */

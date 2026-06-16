@@ -2,7 +2,7 @@
 // the data source. Swap these arrays for Prisma/Supabase without touching
 // the service or controller.
 
-import type { Activity, Company, Contact, Deal } from "./crm.types";
+import type { Activity, Company, Contact, Deal, DealStage } from "./crm.types";
 
 const deals: Deal[] = [
   { id: "d-1", name: "Website redesign", value: 48000, company: "Northwind Labs", stage: "New Lead" },
@@ -71,6 +71,25 @@ export class CrmRepository {
 
   findActivities(): Activity[] {
     return activities;
+  }
+
+  createDeal(input: { name: string; company: string; value: number; stage?: DealStage }): Deal {
+    const deal: Deal = {
+      id: `d_${deals.length + 1}`,
+      name: input.name,
+      company: input.company,
+      value: input.value,
+      stage: input.stage ?? "New Lead",
+    };
+    deals.push(deal);
+    return deal;
+  }
+
+  moveDeal(id: string, stage: DealStage): Deal | undefined {
+    const idx = deals.findIndex((d) => d.id === id);
+    if (idx === -1) return undefined;
+    deals[idx] = { ...deals[idx], stage };
+    return deals[idx];
   }
 }
 
