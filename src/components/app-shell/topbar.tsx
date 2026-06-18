@@ -1,17 +1,56 @@
 "use client";
 
-import { Search, Bell, Sun, Moon, Plus, ShieldCheck, Check, Settings, LogOut } from "lucide-react";
+import {
+  Search,
+  Bell,
+  Sun,
+  Moon,
+  Plus,
+  ShieldCheck,
+  Check,
+  Settings,
+  LogOut,
+  FileText,
+  Component,
+  Database,
+  Workflow,
+  ShoppingBag,
+  Boxes,
+  Inbox,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CommandPalette } from "./command-palette";
 import { useAuth } from "@/lib/auth-context";
 import { ROLES, ROLE_LABEL, isSuperAdmin } from "@/lib/rbac";
 import { cn } from "@/lib/cn";
 
+// Global "quick create" shortcuts — each jumps to the module where that thing
+// is created, so the topbar "+ Create" is a real launcher instead of a dead end.
+const CREATE_ITEMS = [
+  { label: "New page", href: "/pages", icon: FileText },
+  { label: "New component", href: "/components", icon: Component },
+  { label: "New table", href: "/database", icon: Database },
+  { label: "New workflow", href: "/workflows", icon: Workflow },
+  { label: "New product", href: "/commerce", icon: ShoppingBag },
+  { label: "New space", href: "/spaces", icon: Boxes },
+] as const;
+
+const NOTIFICATIONS = [
+  { id: "n1", title: "Workflow “Lead Router” ran — Contact form → CRM", time: "2m ago" },
+  { id: "n2", title: "Deploy shipped — production · build #214", time: "1h ago" },
+  { id: "n3", title: "Priya S. published “Pricing”", time: "Yesterday" },
+];
+
 export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: string[] }) {
+  const router = useRouter();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [roleOpen, setRoleOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifRead, setNotifRead] = useState(false);
   const { user, setRole } = useAuth();
 
   useEffect(() => {
@@ -28,6 +67,12 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const logout = () => {
+    document.cookie = "fb_role=; path=/; max-age=0; samesite=lax";
+    setRoleOpen(false);
+    router.push("/login");
+  };
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-bg px-5">
@@ -62,17 +107,79 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
         {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
 
-      <button
-        className="grid h-8 w-8 place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
-        aria-label="Notifications"
-      >
-        <Bell className="h-4 w-4" />
-      </button>
+      {/* Notifications */}
+      <div className="relative">
+        <button
+          onClick={() => {
+            setNotifOpen((v) => !v);
+            setNotifRead(true);
+          }}
+          className="relative grid h-8 w-8 place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          aria-label="Notifications"
+        >
+          <Bell className="h-4 w-4" />
+          {!notifRead && (
+            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-accent" />
+          )}
+        </button>
+        {notifOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+            <div className="absolute right-0 top-full z-50 mt-1 w-80 overflow-hidden rounded-lg border border-border-strong bg-surface shadow-xl">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+                <span className="text-[13px] font-medium text-fg">Notifications</span>
+                <span className="text-[11px] text-fg-subtle">{NOTIFICATIONS.length} recent</span>
+              </div>
+              {NOTIFICATIONS.length === 0 ? (
+                <div className="flex flex-col items-center gap-1.5 px-3 py-8 text-center">
+                  <Inbox className="h-5 w-5 text-fg-subtle" />
+                  <p className="text-[12px] text-fg-muted">You&apos;re all caught up</p>
+                </div>
+              ) : (
+                <ul className="max-h-80 overflow-y-auto p-1">
+                  {NOTIFICATIONS.map((n) => (
+                    <li key={n.id} className="rounded-md px-2.5 py-2 hover:bg-surface-2">
+                      <p className="text-[12.5px] leading-snug text-fg">{n.title}</p>
+                      <p className="mt-0.5 text-[11px] text-fg-subtle">{n.time}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
-      <button className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent-hover">
-        <Plus className="h-3.5 w-3.5" />
-        Create
-      </button>
+      {/* Quick create */}
+      <div className="relative">
+        <button
+          onClick={() => setCreateOpen((v) => !v)}
+          className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent-hover"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Create
+        </button>
+        {createOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setCreateOpen(false)} />
+            <div className="absolute right-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-border-strong bg-surface p-1 shadow-xl">
+              {CREATE_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setCreateOpen(false)}
+                    className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-fg-muted hover:bg-surface-2 hover:text-fg"
+                  >
+                    <Icon className="h-3.5 w-3.5" /> {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* role switcher — preview the app as any role; Owner = super admin */}
       <div className="relative">
@@ -134,7 +241,10 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
                 </button>
               ))}
               <div className="mt-1 border-t border-border p-1">
-                <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] text-fg-muted hover:bg-surface-2 hover:text-fg">
+                <button
+                  onClick={logout}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] text-fg-muted hover:bg-surface-2 hover:text-fg"
+                >
                   <LogOut className="h-3.5 w-3.5" /> Log out
                 </button>
               </div>

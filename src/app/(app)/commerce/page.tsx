@@ -7,6 +7,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
+import { PromptModal } from "@/components/ui/prompt-modal";
 import { Tabs, type TabDef } from "@/components/ui/tabs";
 import { cn } from "@/lib/cn";
 import type {
@@ -72,6 +73,36 @@ export default function CommercePage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [stats, setStats] = useState<CommerceStats | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const createProduct = (name: string) => {
+    const product: Product = {
+      id: `prod_${Date.now().toString(36)}`,
+      name,
+      sku: name.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 16) || "SKU",
+      price: 0,
+      stock: 0,
+      status: "draft",
+    };
+    setProducts((prev) => [product, ...(prev ?? [])]);
+    setCreateOpen(false);
+  };
+
+  const exportProducts = () => {
+    const rows = products ?? [];
+    if (rows.length === 0) return;
+    const header = ["id", "name", "sku", "price", "stock", "status"];
+    const csv = [
+      header.join(","),
+      ...rows.map((p) => [p.id, `"${p.name.replace(/"/g, '""')}"`, p.sku, p.price, p.stock, p.status].join(",")),
+    ].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "products.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Products + stats power the KPI row, so load them up front.
   useEffect(() => {
@@ -105,10 +136,10 @@ export default function CommercePage() {
             description="Native storefront core — products, orders, inventory and promotions."
             actions={
               <>
-                <Button variant="secondary" size="sm">
+                <Button variant="secondary" size="sm" disabled={!products || products.length === 0} onClick={exportProducts}>
                   Export
                 </Button>
-                <Button variant="primary" size="sm">
+                <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
                   New product
                 </Button>
               </>
@@ -153,6 +184,17 @@ export default function CommercePage() {
           {tab === "coupons" && <CouponsTab coupons={coupons} />}
         </div>
       </main>
+
+      {createOpen && (
+        <PromptModal
+          title="Create a new product"
+          label="Product name"
+          placeholder="e.g. Aurora Desk Lamp"
+          submitLabel="Create product"
+          onClose={() => setCreateOpen(false)}
+          onSubmit={createProduct}
+        />
+      )}
     </>
   );
 }

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer } from "@/components/ui/drawer";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PromptModal } from "@/components/ui/prompt-modal";
 import { cn } from "@/lib/cn";
 import type {
   DbTable,
@@ -43,6 +44,21 @@ export default function DatabasePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TableDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const createTable = (name: string) => {
+    const table: DbTable = {
+      id: `tbl_${Date.now().toString(36)}`,
+      name: name.trim().toLowerCase().replace(/\s+/g, "_"),
+      description: "New table",
+      fields: [{ name: "id", type: "text", required: true }],
+      relations: [],
+      records: 0,
+      updatedAt: new Date().toISOString(),
+    };
+    setTables((prev) => [table, ...(prev ?? [])]);
+    setCreateOpen(false);
+  };
 
   useEffect(() => {
     fetch("/api/database/tables")
@@ -113,7 +129,7 @@ export default function DatabasePage() {
             title="Database"
             description="Visual table builder. Every table auto-generates a typed REST + GraphQL + OpenAPI layer."
             actions={
-              <Button variant="primary" size="md">
+              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-3.5 w-3.5" /> New table
               </Button>
             }
@@ -139,7 +155,7 @@ export default function DatabasePage() {
                   title="No tables yet"
                   description="Create your first table to auto-generate a typed API."
                   action={
-                    <Button variant="primary" size="sm">
+                    <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
                       <Plus className="h-3.5 w-3.5" /> New table
                     </Button>
                   }
@@ -173,6 +189,17 @@ export default function DatabasePage() {
           <TableDetailView detail={detail} />
         )}
       </Drawer>
+
+      {createOpen && (
+        <PromptModal
+          title="Create a new table"
+          label="Table name"
+          placeholder="e.g. invoices"
+          submitLabel="Create table"
+          onClose={() => setCreateOpen(false)}
+          onSubmit={createTable}
+        />
+      )}
     </>
   );
 }
