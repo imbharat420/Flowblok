@@ -75,13 +75,19 @@ export default function DatabasePage() {
     setDetail(null);
     setDetailLoading(true);
     fetch(`/api/database/tables/${selectedId}`)
-      .then((r) => r.json())
-      .then((d: TableDetail) => {
+      .then(async (r) => {
+        if (r.ok) return (await r.json()) as TableDetail;
+        // A created-but-unsaved table has no server record — render its detail
+        // from the local row instead of crashing on the 404 error body.
+        const local = (tables ?? []).find((t) => t.id === selectedId);
+        return local ? { ...local, endpoints: [] } : null;
+      })
+      .then((d) => {
         setDetail(d);
         setDetailLoading(false);
       })
       .catch(() => setDetailLoading(false));
-  }, [selectedId]);
+  }, [selectedId, tables]);
 
   const columns: Column<DbTable>[] = [
     {

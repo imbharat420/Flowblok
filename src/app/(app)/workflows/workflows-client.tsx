@@ -20,6 +20,7 @@ export interface WorkflowItem {
   lastRun: string | null;
   runs: number;
   nodeCount: number;
+  unsaved?: boolean;
 }
 
 export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
@@ -28,7 +29,7 @@ export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
 
   const createWorkflow = (name: string) => {
     setWorkflows((prev) => [
-      { id: `wf_${Date.now().toString(36)}`, name, status: "draft", lastRun: null, runs: 0, nodeCount: 0 },
+      { id: `wf_${Date.now().toString(36)}`, name, status: "draft", lastRun: null, runs: 0, nodeCount: 0, unsaved: true },
       ...prev,
     ]);
     setCreateOpen(false);
@@ -57,7 +58,7 @@ export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
           return (
             <Link
               key={w.id}
-              href={`/workflows/${w.id}`}
+              href={w.unsaved ? `/workflows/${w.id}?name=${encodeURIComponent(w.name)}` : `/workflows/${w.id}`}
               className="group rounded-lg border border-border bg-surface p-4 transition-colors hover:border-border-strong"
             >
               <div className="flex items-center justify-between">

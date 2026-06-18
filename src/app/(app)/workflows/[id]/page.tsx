@@ -32,10 +32,20 @@ export default function WorkflowCanvasPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/workflows/${id}`).then((r) => r.json()),
+      fetch(`/api/workflows/${id}`),
       fetch(`/api/workflows/node-types`).then((r) => r.json()),
-    ]).then(([w, t]) => {
-      setWf(w);
+    ]).then(async ([wfRes, t]) => {
+      const found = wfRes.ok ? ((await wfRes.json()) as Workflow) : null;
+      // A freshly-created workflow (or an unknown id) has no server record yet —
+      // open an empty draft canvas instead of crashing. The display name is
+      // carried over from the workflows list via ?name=.
+      const fallbackName =
+        new URLSearchParams(window.location.search).get("name") ?? "Untitled workflow";
+      setWf(
+        found && Array.isArray(found.nodes)
+          ? found
+          : { id, name: fallbackName, status: "draft", nodes: [], connections: [], lastRun: null, runs: 0 },
+      );
       setTypes(t.items);
     });
   }, [id]);
