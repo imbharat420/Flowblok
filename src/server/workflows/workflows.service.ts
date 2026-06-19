@@ -1,6 +1,6 @@
 // Workflow service — list, fetch, and node-type catalog. HTTP-agnostic.
 import { WorkflowsRepository, workflowsRepository } from "./workflows.repository";
-import type { NodeType, Workflow } from "@/lib/types";
+import type { CreateWorkflowInput, NodeType, UpdateWorkflowInput, Workflow } from "@/lib/types";
 
 export class WorkflowsService {
   constructor(private readonly repo: WorkflowsRepository = workflowsRepository) {}
@@ -18,6 +18,18 @@ export class WorkflowsService {
 
   get(id: string): Workflow | null {
     return this.repo.findById(id) ?? null;
+  }
+
+  create(input: CreateWorkflowInput): Workflow {
+    return this.repo.create(input);
+  }
+
+  update(id: string, patch: UpdateWorkflowInput): Workflow | null {
+    return this.repo.update(id, patch) ?? null;
+  }
+
+  remove(id: string): Workflow | null {
+    return this.repo.remove(id) ?? null;
   }
 
   nodeTypes(): NodeType[] {

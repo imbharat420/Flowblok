@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { Workflow as WorkflowIcon, Play, Plus } from "lucide-react";
@@ -20,19 +21,29 @@ export interface WorkflowItem {
   lastRun: string | null;
   runs: number;
   nodeCount: number;
-  unsaved?: boolean;
 }
 
 export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
+  const router = useRouter();
   const [workflows, setWorkflows] = useState<WorkflowItem[]>(initial);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const createWorkflow = (name: string) => {
+  // Persist the new workflow, then open its builder. The detail page loads it
+  // back from the API, so it survives reloads (no more client-only drafts).
+  const createWorkflow = async (name: string) => {
+    setCreateOpen(false);
+    const res = await fetch("/api/workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return;
+    const wf = (await res.json()) as { id: string };
     setWorkflows((prev) => [
-      { id: `wf_${Date.now().toString(36)}`, name, status: "draft", lastRun: null, runs: 0, nodeCount: 0, unsaved: true },
+      { id: wf.id, name, status: "draft", lastRun: null, runs: 0, nodeCount: 0 },
       ...prev,
     ]);
-    setCreateOpen(false);
+    router.push(`/workflows/${wf.id}`);
   };
 
   return (
@@ -58,7 +69,7 @@ export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
           return (
             <Link
               key={w.id}
-              href={w.unsaved ? `/workflows/${w.id}?name=${encodeURIComponent(w.name)}` : `/workflows/${w.id}`}
+              href={`/workflows/${w.id}`}
               className="group rounded-lg border border-border bg-surface p-4 transition-colors hover:border-border-strong"
             >
               <div className="flex items-center justify-between">

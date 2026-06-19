@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { getIcon } from "@/lib/icon";
-import type { NodeKind, NodeType, Workflow, WorkflowNode } from "@/lib/types";
-import { ChevronLeft, Play, Plus, Loader2 } from "lucide-react";
+import type { NodeKind, NodeType, Workflow, WorkflowNode, WorkflowStatus } from "@/lib/types";
+import { ChevronLeft, Play, Plus, Loader2, Save, Check } from "lucide-react";
 
 const NODE_W = 184;
 const NODE_H = 60;
@@ -28,6 +28,8 @@ export default function WorkflowCanvasPage() {
   const [runningId, setRunningId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
 
   useEffect(() => {
@@ -109,6 +111,33 @@ export default function WorkflowCanvasPage() {
     setRunning(false);
   };
 
+  // Persist the whole canvas (name, status, nodes, connections).
+  const save = async () => {
+    if (!wf || saving) return;
+    setSaving(true);
+    const res = await fetch(`/api/workflows/${wf.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: wf.name, status: wf.status, nodes: wf.nodes, connections: wf.connections }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1800);
+    }
+  };
+
+  // Activate / pause — persists immediately, like n8n's active toggle.
+  const setStatus = async (status: WorkflowStatus) => {
+    if (!wf) return;
+    setWf({ ...wf, status });
+    await fetch(`/api/workflows/${wf.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+  };
+
   const canvasSize = useMemo(() => {
     if (!wf) return { w: 1200, h: 640 };
     const maxX = Math.max(0, ...wf.nodes.map((n) => n.x + NODE_W));
@@ -133,11 +162,35 @@ export default function WorkflowCanvasPage() {
         </Link>
         <div className="h-4 w-px bg-border" />
         <span className="text-[13px] font-medium text-fg">{wf.name}</span>
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ok">
-          <span className="h-1.5 w-1.5 rounded-full bg-ok" /> {wf.status}
-        </span>
+        <button
+          onClick={() => setStatus(wf.status === "active" ? "inactive" : "active")}
+          title="Toggle active"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11px] font-medium capitalize transition-colors hover:border-border-strong"
+        >
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              wf.status === "active" ? "bg-ok" : wf.status === "inactive" ? "bg-warn" : "bg-fg-subtle",
+            )}
+          />
+          <span className={wf.status === "active" ? "text-ok" : "text-fg-muted"}>{wf.status}</span>
+        </button>
         <div className="flex-1" />
         <span className="nums text-[12px] text-fg-subtle">{wf.runs.toLocaleString()} runs</span>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-[13px] font-medium text-fg transition-colors hover:border-border-strong disabled:opacity-60"
+        >
+          {saving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : savedFlash ? (
+            <Check className="h-3.5 w-3.5 text-ok" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
+          {saving ? "Saving…" : savedFlash ? "Saved" : "Save"}
+        </button>
         <button
           onClick={run}
           disabled={running}

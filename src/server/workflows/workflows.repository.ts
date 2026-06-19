@@ -1,7 +1,7 @@
 // Workflow engine data source — node-type catalog + workflow definitions.
 // The n8n/Boomi-style engine is abstracted behind this; the UI never sees n8n directly.
 
-import type { NodeType, Workflow } from "@/lib/types";
+import type { CreateWorkflowInput, NodeType, UpdateWorkflowInput, Workflow } from "@/lib/types";
 
 const NODE_TYPES: NodeType[] = [
   { type: "webhook", label: "Webhook", icon: "Webhook", kind: "trigger", category: "Triggers", description: "Start when an HTTP request arrives." },
@@ -23,7 +23,7 @@ const NODE_TYPES: NodeType[] = [
   { type: "slack", label: "Slack", icon: "Hash", kind: "integration", category: "Integrations", description: "Post to a Slack channel." },
 ];
 
-const WORKFLOWS: Workflow[] = [
+const SEED_WORKFLOWS: Workflow[] = [
   {
     id: "wf_lead_router",
     name: "Lead Router",
@@ -71,6 +71,14 @@ const WORKFLOWS: Workflow[] = [
   },
 ];
 
+// Pin the mutable workflow list on globalThis. In Next.js dev, route-handler
+// files are separate bundles that can each hold their own copy of a plain
+// module-level array — so a workflow created via one route wouldn't be found
+// by another. A single global array keeps create/update/delete consistent
+// across every route handler and survives HMR re-evaluation.
+const globalStore = globalThis as unknown as { __flowblokWorkflows?: Workflow[] };
+const WORKFLOWS: Workflow[] = (globalStore.__flowblokWorkflows ??= SEED_WORKFLOWS);
+
 export class WorkflowsRepository {
   nodeTypes(): NodeType[] {
     return NODE_TYPES;
@@ -80,6 +88,34 @@ export class WorkflowsRepository {
   }
   findById(id: string): Workflow | undefined {
     return WORKFLOWS.find((w) => w.id === id);
+  }
+
+  create(input: CreateWorkflowInput): Workflow {
+    const wf: Workflow = {
+      id: "wf_" + Date.now().toString(36),
+      name: input.name,
+      status: "draft",
+      nodes: input.nodes ?? [],
+      connections: input.connections ?? [],
+      lastRun: null,
+      runs: 0,
+    };
+    WORKFLOWS.unshift(wf);
+    return wf;
+  }
+
+  update(id: string, patch: UpdateWorkflowInput): Workflow | undefined {
+    const idx = WORKFLOWS.findIndex((w) => w.id === id);
+    if (idx === -1) return undefined;
+    WORKFLOWS[idx] = { ...WORKFLOWS[idx], ...patch };
+    return WORKFLOWS[idx];
+  }
+
+  remove(id: string): Workflow | undefined {
+    const idx = WORKFLOWS.findIndex((w) => w.id === id);
+    if (idx === -1) return undefined;
+    const [removed] = WORKFLOWS.splice(idx, 1);
+    return removed;
   }
 }
 

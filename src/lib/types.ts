@@ -199,3 +199,16 @@ export interface Workflow {
   lastRun: string | null;
   runs: number;
 }
+
+export interface CreateWorkflowInput {
+  name: string;
+  nodes?: WorkflowNode[];
+  connections?: WorkflowConnection[];
+}
+
+export interface UpdateWorkflowInput {
+  name?: string;
+  status?: WorkflowStatus;
+  nodes?: WorkflowNode[];
+  connections?: WorkflowConnection[];
+}
