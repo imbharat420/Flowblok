@@ -43,7 +43,10 @@ function evalExpr(code: string, scope: ExprScope): unknown {
 export function resolveValue(value: unknown, scope: ExprScope): unknown {
   if (typeof value !== "string" || !value.includes("{{")) return value;
 
-  const whole = value.match(/^\s*\{\{([\s\S]+?)\}\}\s*$/);
+  // Whole-string single expression: the entire value is ONE {{ … }} with no
+  // other delimiters inside (so "{{a}} text {{b}}" does NOT match here — it
+  // falls through to interpolation below).
+  const whole = value.match(/^\s*\{\{((?:(?!\}\})[\s\S])*)\}\}\s*$/);
   if (whole) {
     try {
       return evalExpr(whole[1], scope);
