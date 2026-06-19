@@ -127,6 +127,7 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
       finishedAt: "",
       itemsIn: input.length,
       itemsOut: 0,
+      inputSample: capItems(input),
       output: [],
       messages,
     };
@@ -186,7 +187,8 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
       log.status = "error";
       log.error = (err as Error).message;
       run.error = `${node.name}: ${(err as Error).message}`;
-      failed = true;
+      // "Continue on fail" (set in the node's Settings) keeps the run going.
+      if (!node.config?._continueOnFail) failed = true;
     }
     log.finishedAt = new Date().toISOString();
     run.nodeLogs.push(log);

@@ -8,6 +8,7 @@ import { getIcon } from "@/lib/icon";
 import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
 import { SUB_PORTS, SUB_PORT_LABEL, SUB_NODE_PORT, isSubPort, type SubPort } from "@/lib/subnodes";
 import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
+import { NodeDetailView } from "./node-detail-view";
 
 const NODE_W = 184;
 const NODE_H = 60;
@@ -34,6 +35,7 @@ export default function WorkflowCanvasPage() {
   const [savedFlash, setSavedFlash] = useState(false);
   const [lastRun, setLastRun] = useState<WorkflowRun | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [ndvNode, setNdvNode] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [linkPos, setLinkPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
@@ -549,6 +551,10 @@ export default function WorkflowCanvasPage() {
                     if (connect.current && connect.current.from !== n.id) completeConnect(n.id);
                   }}
                   onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setNdvNode(n.id);
+                  }}
                   className={cn(
                     "absolute cursor-grab select-none rounded-lg border bg-[#141414] active:cursor-grabbing",
                     selected === n.id ? "border-accent" : "border-[rgba(255,255,255,0.12)]",
@@ -766,6 +772,25 @@ export default function WorkflowCanvasPage() {
           )}
         </aside>
       </div>
+
+      {ndvNode &&
+        (() => {
+          const nd = wf.nodes.find((n) => n.id === ndvNode);
+          if (!nd) return null;
+          const log = lastRun?.nodeLogs.find((l) => l.nodeId === ndvNode) ?? null;
+          return (
+            <NodeDetailView
+              node={nd}
+              nodeType={typeOf(nd.type)}
+              runLog={log}
+              running={running}
+              onChangeName={(name) => setNodeField(nd.id, { name })}
+              onChangeConfig={(k, v) => setNodeConfig(nd.id, k, v)}
+              onRun={run}
+              onClose={() => setNdvNode(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

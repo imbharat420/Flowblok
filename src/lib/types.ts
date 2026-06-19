@@ -192,7 +192,8 @@ export interface NodeRunLog {
   finishedAt: string;
   itemsIn: number;
   itemsOut: number;
-  output: ExecItem[]; // capped sample for the run viewer
+  inputSample: ExecItem[]; // capped sample of input items (for the node detail view)
+  output: ExecItem[]; // capped sample of output items
   messages: string[]; // handler log lines
   error?: string;
 }

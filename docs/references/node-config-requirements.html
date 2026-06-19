@@ -1,0 +1,111 @@
+<title>Flowblok — Node Config (NDV) Requirements</title>
+<style>
+  :root{--bg:#0b0c0e;--panel:#15171a;--line:#272b30;--fg:#e8eaed;--muted:#9aa0a6;--accent:#7c9cff;--ok:#34d399;--warn:#fbbf24;--err:#f87171}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;padding:32px 20px}
+  .wrap{max-width:1040px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  h2{font-size:18px;margin:30px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+  h3{font-size:14px;margin:18px 0 6px;color:var(--accent)}
+  p{margin:8px 0}
+  code{background:#1f2226;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font:12px ui-monospace,monospace}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card h3{margin-top:0}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line)}
+  .done{color:var(--ok);border-color:#225} .todo{color:var(--warn)} .gap{color:var(--err)}
+  ul{margin:6px 0;padding-left:20px} li{margin:3px 0}
+  .scroll{overflow-x:auto}
+  .mock{background:#0e1013;border:1px solid var(--line);border-radius:10px;padding:0;margin:12px 0;overflow:hidden}
+  .mock .bar{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .mock .cols{display:grid;grid-template-columns:1fr 1.3fr 1fr;min-height:150px}
+  .mock .col{padding:12px;border-right:1px solid var(--line);font-size:12px}
+  .mock .col:last-child{border-right:0}
+  .mock .fld{background:#15171a;border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin:6px 0;display:flex;justify-content:space-between;gap:8px}
+  .fx{color:var(--accent);font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+</style>
+<div class="wrap">
+  <h1>Workflow Node Configuration — Functional Requirements</h1>
+  <p class="sub">n8n-parity spec for Flowblok's node config experience (the "Node Detail View"), derived from the live n8n editor + docs.n8n.io. Drives the build on branch <code>staging</code>.</p>
+
+  <h2>1 · The Node Detail View (NDV)</h2>
+  <p>In n8n, clicking/double-clicking a node opens a full-screen <b>3-pane modal</b> — not a cramped sidebar. Flowblok must match this.</p>
+  <div class="mock">
+    <div class="bar">🤖 <b style="color:#e8eaed">AI Agent</b> &nbsp;·&nbsp; Parameters | Settings &nbsp;·&nbsp; Execute step &nbsp;·&nbsp; Docs ↗ &nbsp;·&nbsp; ✕</div>
+    <div class="cols">
+      <div class="col"><b>INPUT</b><br><span style="color:var(--muted)">items in · JSON / table / schema view</span></div>
+      <div class="col"><b>PARAMETERS</b>
+        <div class="fld"><span>Prompt</span><span class="fx">fx</span></div>
+        <div class="fld"><span>Model ▾</span></div>
+        <div class="fld"><span>Require output format</span><span>⏻</span></div>
+        <div class="fld" style="border-style:dashed;justify-content:center;color:var(--muted)">+ Add Option</div>
+      </div>
+      <div class="col"><b>OUTPUT</b><br><span style="color:var(--muted)">items out · run this step to populate</span></div>
+    </div>
+  </div>
+
+  <h2>2 · Required field/control types</h2>
+  <p>Every parameter renders a typed control, and (n8n's signature) most support an <b>expression toggle</b> (<span class="fx">fx</span>) to switch a fixed value into a <code>{{ … }}</code> expression.</p>
+  <div class="scroll"><table>
+    <tr><th>Control</th><th>n8n name</th><th>Notes</th><th>Flowblok</th></tr>
+    <tr><td>Text</td><td>string</td><td>+ fx expression toggle</td><td><span class="tag done">have (text)</span></td></tr>
+    <tr><td>Multiline</td><td>string (rows)</td><td>code/JSON variants + fx</td><td><span class="tag done">have (textarea)</span></td></tr>
+    <tr><td>Number</td><td>number</td><td>+ fx</td><td><span class="tag done">have</span></td></tr>
+    <tr><td>Toggle</td><td>boolean</td><td>—</td><td><span class="tag done">have</span></td></tr>
+    <tr><td>Dropdown</td><td>options</td><td>single-select + fx</td><td><span class="tag done">have (select)</span></td></tr>
+    <tr><td>Expression editor</td><td>fx</td><td><code>{{ }}</code> w/ resolved preview</td><td><span class="tag todo">add fx toggle</span></td></tr>
+    <tr><td>Resource → Operation</td><td>resourceLocator</td><td>cascading: pick resource, then operation reveals fields</td><td><span class="tag gap">not yet</span></td></tr>
+    <tr><td>Collection / "Add Option"</td><td>collection / fixedCollection</td><td>optional grouped params</td><td><span class="tag todo">basic</span></td></tr>
+    <tr><td>Credential picker</td><td>credentials</td><td>select/create a credential</td><td><span class="tag todo">module exists, picker todo</span></td></tr>
+  </table></div>
+
+  <h2>3 · Tabs & actions inside the NDV</h2>
+  <div class="grid">
+    <div class="card"><h3>Parameters tab</h3><ul>
+      <li>All node params, top→bottom, with fx toggles</li>
+      <li><b>Add Option</b> reveals optional/advanced params</li>
+      <li>Inline hints / placeholders / required markers</li>
+    </ul></div>
+    <div class="card"><h3>Settings tab</h3><ul>
+      <li>Node <b>notes</b></li>
+      <li><b>Continue on fail</b> (don't stop the run)</li>
+      <li><b>Retry on fail</b> (attempts, wait)</li>
+      <li>Notes-in-flow, rename, execute-once</li>
+    </ul></div>
+    <div class="card"><h3>Execute step</h3><ul>
+      <li>Run the workflow up to this node</li>
+      <li>Populate INPUT (items received) + OUTPUT (items produced)</li>
+      <li>Show errors inline</li>
+    </ul></div>
+    <div class="card"><h3>INPUT / OUTPUT panes</h3><ul>
+      <li>JSON view of items in / out</li>
+      <li>Pin data for testing (n8n: "pinned data")</li>
+      <li>Item count + per-item navigation</li>
+    </ul></div>
+  </div>
+
+  <h2>4 · Node-add panel</h2>
+  <p>The <code>+</code> / search opens a searchable node picker grouped by category (Triggers, Core, Flow, Data, AI, Integrations) — and for the AI Agent's sub-ports, a filtered picker (only Chat Models / Memories / Tools).</p>
+
+  <h2>5 · Backend / frontend integration</h2>
+  <div class="scroll"><table>
+    <tr><th>Need</th><th>Integration</th></tr>
+    <tr><td>Persist param + settings values</td><td>Already on <code>node.config</code> via <code>PUT /api/workflows/:id</code></td></tr>
+    <tr><td>Per-node input/output for the NDV</td><td>Run log must capture <b>input sample</b> per node (currently only output) → add <code>inputSample</code> to <code>NodeRunLog</code></td></tr>
+    <tr><td>Execute step</td><td>Reuse <code>POST /api/workflows/:id/run</code>; read this node's log</td></tr>
+    <tr><td>Expression resolve preview</td><td>Engine resolver already exists; surface a preview endpoint (optional)</td></tr>
+    <tr><td>Credential picker options</td><td><code>GET /api/credentials</code> (masked) already returns id+name+type</td></tr>
+  </table></div>
+
+  <h2>6 · Build status (this branch)</h2>
+  <ul>
+    <li><span class="tag done">done</span> Canvas, connect/delete, triggers, scheduler, real engine, run logs, AI Agent sub-nodes (Chat Model/Memory/Tool), credentials module.</li>
+    <li><span class="tag todo">building now</span> NDV modal (double-click) · fx expression toggle on fields · Settings tab (notes / continue-on-fail) · Execute-step input/output panes (adds <code>inputSample</code> to run logs).</li>
+    <li><span class="tag gap">next</span> Resource→Operation cascade · credential picker control · pinned data · bigger node catalog.</li>
+  </ul>
+</div>
