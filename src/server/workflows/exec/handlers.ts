@@ -6,6 +6,7 @@
 
 import type { ExecItem, WorkflowNode } from "@/lib/types";
 import { resolveValue } from "./expressions";
+import { assertSafeUrl } from "./net";
 
 // Sub-nodes attached to this node via its sub-ports (AI Agent uses these).
 export interface SubNodes {
@@ -119,6 +120,7 @@ const httpHandler: NodeHandler = async ({ items, getParam, log }) => {
     const bodyRaw = getParam("body", item);
     log(`${method} ${url}`);
     if (!url) throw new Error("HTTP node: URL is empty");
+    assertSafeUrl(url); // block SSRF to internal/loopback hosts
     const hasBody = method !== "GET" && method !== "HEAD" && bodyRaw !== undefined && bodyRaw !== "";
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000); // bound hung requests

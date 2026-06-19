@@ -6,7 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { getIcon } from "@/lib/icon";
 import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
-import { SUB_PORTS, SUB_PORT_LABEL, isSubPort, type SubPort } from "@/lib/subnodes";
+import { SUB_PORTS, SUB_PORT_LABEL, SUB_NODE_PORT, isSubPort, type SubPort } from "@/lib/subnodes";
 import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
 
 const NODE_W = 184;
@@ -180,6 +180,10 @@ export default function WorkflowCanvasPage() {
     if (c.subTarget) {
       const { agentId, subPort } = c.subTarget;
       if (to === agentId) return;
+      // Only attach a sub-node whose kind matches the port (a Chat Model into
+      // ai_model, a Tool into ai_tool, …). Ignore drops on any other node.
+      const target = wf?.nodes.find((n) => n.id === to);
+      if (!target || SUB_NODE_PORT[target.type] !== subPort) return;
       setWf((prev) => {
         if (!prev) return prev;
         // Chat Model / Memory are single-slot — replace any existing attachment.

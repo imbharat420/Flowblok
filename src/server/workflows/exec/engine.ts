@@ -6,7 +6,7 @@
 // fromPort selects which output it carries. Every node produces a run log.
 
 import type { ExecItem, RunTrigger, NodeRunLog, Workflow, WorkflowNode, WorkflowRun } from "@/lib/types";
-import { isSubNode, isSubPort } from "@/lib/subnodes";
+import { isSubNode, isSubPort, SUB_NODE_PORT } from "@/lib/subnodes";
 import { resolveValue } from "./expressions";
 import { getHandler, type SubNodes } from "./handlers";
 import { saveRun } from "./runs";
@@ -53,11 +53,19 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
   for (const c of wf.connections) {
     if (!isSubPort(c.toPort)) continue;
     const src = nodesById.get(c.from);
-    if (!nodesById.has(c.to) || !src) continue;
+    const parent = nodesById.get(c.to);
+    if (!src || !parent) continue;
+    if (parent.type !== "ai_agent") continue; // only the AI Agent hosts sub-nodes
+    if (SUB_NODE_PORT[src.type] !== c.toPort) continue; // source must be a sub-node of that kind
     const slot = subNodesByParent.get(c.to) ?? { tools: [] };
-    if (c.toPort === "ai_model") slot.model = src;
-    else if (c.toPort === "ai_memory") slot.memory = src;
-    else slot.tools.push(src);
+    // Chat Model / Memory are single-slot — keep the first, deterministically.
+    if (c.toPort === "ai_model") {
+      if (!slot.model) slot.model = src;
+    } else if (c.toPort === "ai_memory") {
+      if (!slot.memory) slot.memory = src;
+    } else {
+      slot.tools.push(src);
+    }
     subNodesByParent.set(c.to, slot);
   }
 

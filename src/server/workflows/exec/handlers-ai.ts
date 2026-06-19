@@ -8,10 +8,13 @@
 
 import type { ExecItem, WorkflowNode } from "@/lib/types";
 import { registerHandler, type NodeHandler, type SubNodes } from "./handlers";
+import { assertSafeUrl } from "./net";
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-opus-4-8";
-const MAX_TOOL_ROUNDS = 6;
+const MAX_TOOL_ROUNDS = 8;
+const MAX_TOKENS = 4096;
+const MAX_ITEMS = 50; // cap LLM fan-out per run
 
 interface AnthropicBlock {
   type: string;
@@ -37,7 +40,7 @@ async function callAnthropic(
   messages: unknown[],
   tools: AgentTool["def"][],
 ): Promise<AnthropicResponse> {
-  const body: Record<string, unknown> = { model, max_tokens: 1024, messages };
+  const body: Record<string, unknown> = { model, max_tokens: MAX_TOKENS, messages };
   if (system) body.system = system;
   if (tools.length) body.tools = tools;
 
@@ -99,6 +102,7 @@ function buildTool(node: WorkflowNode): AgentTool {
       exec: async (input) => {
         const arg = String(input.input ?? "");
         const finalUrl = url.includes("{{input}}") ? url.replace(/\{\{input\}\}/g, encodeURIComponent(arg)) : url;
+        assertSafeUrl(finalUrl); // block SSRF — the model influences this URL
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 10_000);
         try {
@@ -130,6 +134,23 @@ function buildTool(node: WorkflowNode): AgentTool {
   };
 }
 
+// Build tools with de-duplicated names (Anthropic rejects duplicate tool names).
+function buildTools(nodes: WorkflowNode[]): AgentTool[] {
+  const tools = nodes.map(buildTool);
+  const seen = new Set<string>();
+  for (const t of tools) {
+    let name = t.def.name;
+    if (seen.has(name)) {
+      let i = 2;
+      while (seen.has(`${name}_${i}`.slice(0, 64))) i++;
+      name = `${name}_${i}`.slice(0, 64);
+      t.def.name = name;
+    }
+    seen.add(name);
+  }
+  return tools;
+}
+
 function modelFor(subNodes: SubNodes, getParam: (k: string, i?: ExecItem) => unknown, item: ExecItem): string {
   const m = subNodes.model?.config?.model;
   if (typeof m === "string" && m) return m;
@@ -138,14 +159,18 @@ function modelFor(subNodes: SubNodes, getParam: (k: string, i?: ExecItem) => unk
 
 const aiAgent: NodeHandler = async ({ items, getParam, log, subNodes }) => {
   const key = process.env.ANTHROPIC_API_KEY;
-  const src = items.length ? items : [{ json: {} }];
-  const tools = subNodes.tools.map(buildTool);
+  const all = items.length ? items : [{ json: {} }];
+  const src = all.slice(0, MAX_ITEMS);
+  if (all.length > MAX_ITEMS) log(`capped to ${MAX_ITEMS} of ${all.length} items`);
+
+  const tools = buildTools(subNodes.tools);
+  const toolByName = new Map(tools.map((t) => [t.def.name, t]));
   const toolNames = tools.map((t) => t.def.name);
   const memWindow = subNodes.memory ? Number(subNodes.memory.config?.windowSize ?? 10) : 0;
 
   if (subNodes.model) log(`model: ${subNodes.model.config?.model ?? "?"} (${subNodes.model.config?.provider ?? "Anthropic"})`);
   if (toolNames.length) log(`tools: ${toolNames.join(", ")}`);
-  if (subNodes.memory) log(`memory window: ${memWindow}`);
+  if (subNodes.memory) log(`memory attached (window ${memWindow}) — not yet applied`);
 
   if (!key) {
     log("no ANTHROPIC_API_KEY set — returning simulated reply");
@@ -178,28 +203,48 @@ const aiAgent: NodeHandler = async ({ items, getParam, log, subNodes }) => {
     log(`${model} · ${prompt.slice(0, 60)}`);
     const messages: unknown[] = [{ role: "user", content: prompt }];
     let finalText = "";
+    let converged = false;
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const resp = await callAnthropic(key, model, system, messages, tools.map((t) => t.def));
+      if (resp.stop_reason === "max_tokens") log("response truncated at max_tokens");
       const content = resp.content ?? [];
       const toolUses = content.filter((c) => c.type === "tool_use");
       if (resp.stop_reason !== "tool_use" || toolUses.length === 0) {
         finalText = content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("\n");
+        converged = true;
         break;
       }
       messages.push({ role: "assistant", content });
       const results = [];
       for (const tu of toolUses) {
-        const tool = tools.find((t) => t.def.name === tu.name);
-        let result: unknown;
+        const tool = toolByName.get(tu.name ?? "");
+        let resultContent: string;
+        let isError = false;
         try {
-          result = tool ? await tool.exec(tu.input ?? {}) : `tool ${tu.name} not found`;
+          if (!tool) {
+            resultContent = `tool ${tu.name} not found`;
+            isError = true;
+          } else {
+            const r = await tool.exec(tu.input ?? {});
+            resultContent = typeof r === "string" ? r : JSON.stringify(r);
+          }
         } catch (err) {
-          result = `error: ${(err as Error).message}`;
+          resultContent = (err as Error).message;
+          isError = true;
         }
-        log(`tool ${tu.name}(${JSON.stringify(tu.input ?? {})}) → ${String(result).slice(0, 80)}`);
-        results.push({ type: "tool_result", tool_use_id: tu.id, content: String(result) });
+        log(`tool ${tu.name} → ${(isError ? "error: " : "") + resultContent.slice(0, 80)}`);
+        results.push({
+          type: "tool_result",
+          tool_use_id: tu.id,
+          content: resultContent,
+          ...(isError ? { is_error: true } : {}),
+        });
       }
       messages.push({ role: "user", content: results });
+    }
+    if (!converged) {
+      log(`tool loop hit ${MAX_TOOL_ROUNDS} rounds without finishing`);
+      finalText = finalText || "(agent did not finish: max tool rounds reached)";
     }
     out.push({ json: { ...item.json, ai: { model, tools: toolNames, text: finalText } } });
   }
