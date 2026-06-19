@@ -151,6 +151,9 @@ export interface NodeType {
   category: string; // palette group
   description: string;
   params?: NodeParam[];
+  // Sub-node attach point. If set, this node is a SUB-NODE that plugs into a
+  // parent (e.g. AI Agent) via that port rather than running in the main flow.
+  subPort?: "ai_model" | "ai_memory" | "ai_tool";
 }
 
 export interface WorkflowNode {
@@ -167,6 +170,7 @@ export interface WorkflowConnection {
   from: string; // node id
   to: string; // node id
   fromPort?: string; // output port on the source node (e.g. "true"/"false" for If); default "main"
+  toPort?: string; // input port on the target — "ai_model"/"ai_memory"/"ai_tool" attaches a sub-node
 }
 
 // ----- Execution model (n8n-style: items flow between nodes) -----

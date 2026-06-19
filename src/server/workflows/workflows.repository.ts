@@ -123,11 +123,51 @@ const NODE_TYPES: NodeType[] = [
 
   {
     type: "ai_agent", label: "AI Agent", icon: "Sparkles", kind: "action", category: "AI",
-    description: "Generate a reply with Claude.",
+    description: "Reason with Claude and call attached tools.",
     params: [
       { key: "prompt", label: "Prompt", type: "textarea", placeholder: "Summarize this: {{ $json.text }}" },
       { key: "model", label: "Model", type: "select", options: ["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"], default: "claude-opus-4-8" },
       { key: "system", label: "System prompt", type: "textarea", placeholder: "You are a helpful assistant." },
+    ],
+  },
+
+  // ── AI sub-nodes (attach to an AI Agent via its Chat Model / Memory / Tool ports) ──
+  {
+    type: "chat_model", label: "Chat Model", icon: "Brain", kind: "action", category: "AI", subPort: "ai_model",
+    description: "Language model for an AI Agent.",
+    params: [
+      { key: "provider", label: "Provider", type: "select", options: ["Anthropic", "OpenAI"], default: "Anthropic" },
+      { key: "model", label: "Model", type: "select", options: ["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"], default: "claude-opus-4-8" },
+      { key: "temperature", label: "Temperature", type: "number", default: 0.7 },
+    ],
+  },
+  {
+    type: "memory", label: "Memory", icon: "Database", kind: "action", category: "AI", subPort: "ai_memory",
+    description: "Conversation memory for an AI Agent.",
+    params: [{ key: "windowSize", label: "Window size", type: "number", default: 10, hint: "Recent turns to keep." }],
+  },
+  {
+    type: "tool_http", label: "HTTP Tool", icon: "Globe", kind: "action", category: "AI", subPort: "ai_tool",
+    description: "Lets the agent call an HTTP API.",
+    params: [
+      { key: "name", label: "Tool name", type: "text", placeholder: "get_data" },
+      { key: "description", label: "Description", type: "textarea", placeholder: "What this tool does (the model reads this)" },
+      { key: "method", label: "Method", type: "select", options: ["GET", "POST"], default: "GET" },
+      { key: "url", label: "URL", type: "text", placeholder: "https://api.example.com/items" },
+    ],
+  },
+  {
+    type: "tool_calculator", label: "Calculator", icon: "Calculator", kind: "action", category: "AI", subPort: "ai_tool",
+    description: "Lets the agent evaluate math expressions.",
+    params: [{ key: "name", label: "Tool name", type: "text", default: "calculator" }],
+  },
+  {
+    type: "tool_code", label: "Code Tool", icon: "Code", kind: "action", category: "AI", subPort: "ai_tool",
+    description: "Lets the agent run a JS function.",
+    params: [
+      { key: "name", label: "Tool name", type: "text", placeholder: "transform" },
+      { key: "description", label: "Description", type: "textarea", placeholder: "What this tool does" },
+      { key: "code", label: "Code", type: "textarea", placeholder: "return input.toUpperCase();" },
     ],
   },
 ];

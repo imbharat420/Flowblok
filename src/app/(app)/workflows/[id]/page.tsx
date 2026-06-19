@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { getIcon } from "@/lib/icon";
 import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
+import { SUB_PORTS, SUB_PORT_LABEL, isSubPort, type SubPort } from "@/lib/subnodes";
 import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
 
 const NODE_W = 184;
@@ -36,7 +37,12 @@ export default function WorkflowCanvasPage() {
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [linkPos, setLinkPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
-  const connect = useRef<{ from: string; port: string; el: HTMLElement } | null>(null);
+  const connect = useRef<{
+    from: string;
+    port: string;
+    el: HTMLElement;
+    subTarget?: { agentId: string; subPort: SubPort };
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -157,9 +163,39 @@ export default function WorkflowCanvasPage() {
     setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
+  // Drag from an AI Agent sub-port (Chat Model / Memory / Tool) onto a sub-node.
+  const startSubConnect = (e: React.MouseEvent, agent: WorkflowNode, subPort: SubPort) => {
+    e.stopPropagation();
+    const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
+    const rect = canvas.getBoundingClientRect();
+    connect.current = { from: agent.id, port: "sub", el: canvas, subTarget: { agentId: agent.id, subPort } };
+    setConnectFrom(agent.id);
+    setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
   const completeConnect = (to: string) => {
     const c = connect.current;
-    if (!c || c.from === to) return;
+    if (!c) return;
+    // Sub-port drag: attach the released sub-node to the agent's sub-port.
+    if (c.subTarget) {
+      const { agentId, subPort } = c.subTarget;
+      if (to === agentId) return;
+      setWf((prev) => {
+        if (!prev) return prev;
+        // Chat Model / Memory are single-slot — replace any existing attachment.
+        const base =
+          subPort === "ai_tool"
+            ? prev.connections
+            : prev.connections.filter((x) => !(x.to === agentId && x.toPort === subPort));
+        if (base.some((x) => x.from === to && x.to === agentId && x.toPort === subPort)) return prev;
+        return {
+          ...prev,
+          connections: [...base, { id: `c_${Date.now().toString(36)}`, from: to, to: agentId, toPort: subPort }],
+        };
+      });
+      return;
+    }
+    if (c.from === to) return;
     const { from, port } = c;
     setWf((prev) => {
       if (!prev) return prev;
@@ -400,6 +436,41 @@ export default function WorkflowCanvasPage() {
                 const a = wf.nodes.find((n) => n.id === c.from);
                 const b = wf.nodes.find((n) => n.id === c.to);
                 if (!a || !b) return null;
+                const isSelEdge = selectedConn === c.id;
+                // Sub-node attachment: sub-node (a) → parent agent (b) sub-port,
+                // drawn from the agent's bottom up to the sub-node.
+                if (isSubPort(c.toPort)) {
+                  const idx = SUB_PORTS.indexOf(c.toPort);
+                  const px = b.x + (NODE_W * (idx + 0.5)) / 3;
+                  const py = b.y + NODE_H + 14;
+                  const sx = a.x + NODE_W / 2;
+                  const sy = a.y;
+                  const sd = `M ${px} ${py} C ${px} ${py + 40}, ${sx} ${sy - 40}, ${sx} ${sy}`;
+                  return (
+                    <g key={c.id}>
+                      <path
+                        d={sd}
+                        fill="none"
+                        stroke="transparent"
+                        strokeWidth={14}
+                        style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedConn(c.id);
+                          setSelected(null);
+                        }}
+                      />
+                      <path
+                        d={sd}
+                        fill="none"
+                        stroke={isSelEdge ? "#f87171" : "rgba(167,139,250,0.65)"}
+                        strokeWidth={isSelEdge ? 2.5 : 1.5}
+                        strokeDasharray="5 3"
+                        style={{ pointerEvents: "none" }}
+                      />
+                    </g>
+                  );
+                }
                 const x1 = a.x + NODE_W;
                 const y1 = a.y + NODE_H / 2;
                 const x2 = b.x;
@@ -522,6 +593,22 @@ export default function WorkflowCanvasPage() {
                   )}
                   {/* input port */}
                   <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-[#0a0a0a] bg-[rgba(255,255,255,0.4)]" />
+                  {/* AI Agent sub-ports — drag onto a Chat Model / Memory / Tool sub-node */}
+                  {n.type === "ai_agent" && (
+                    <div className="absolute inset-x-0 top-full flex justify-around px-1 pt-2">
+                      {SUB_PORTS.map((sp) => (
+                        <button
+                          key={sp}
+                          title={`Attach ${SUB_PORT_LABEL[sp]}`}
+                          onMouseDown={(e) => startSubConnect(e, n, sp)}
+                          className="flex flex-col items-center gap-0.5"
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0a] bg-[#a78bfa] hover:brightness-125" />
+                          <span className="text-[9px] leading-none text-[#a78bfa]">{SUB_PORT_LABEL[sp]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

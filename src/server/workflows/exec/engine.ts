@@ -6,8 +6,9 @@
 // fromPort selects which output it carries. Every node produces a run log.
 
 import type { ExecItem, RunTrigger, NodeRunLog, Workflow, WorkflowNode, WorkflowRun } from "@/lib/types";
+import { isSubNode, isSubPort } from "@/lib/subnodes";
 import { resolveValue } from "./expressions";
-import { getHandler } from "./handlers";
+import { getHandler, type SubNodes } from "./handlers";
 import { saveRun } from "./runs";
 import { workflowsRepository } from "../workflows.repository";
 import "./register"; // ensure all handlers are registered
@@ -44,29 +45,50 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
   const seedItems: ExecItem[] = [{ json: safeClone(opts.payload ?? {}) }];
 
   const nodesById = new Map(wf.nodes.map((n) => [n.id, n]));
+
+  // Sub-nodes (Chat Model / Memory / Tool) attach to a parent via a sub-port
+  // connection (toPort = ai_*). They are NOT part of the main data flow: they
+  // don't run on their own and their edges don't count as flow inputs.
+  const subNodesByParent = new Map<string, SubNodes>();
+  for (const c of wf.connections) {
+    if (!isSubPort(c.toPort)) continue;
+    const src = nodesById.get(c.from);
+    if (!nodesById.has(c.to) || !src) continue;
+    const slot = subNodesByParent.get(c.to) ?? { tools: [] };
+    if (c.toPort === "ai_model") slot.model = src;
+    else if (c.toPort === "ai_memory") slot.memory = src;
+    else slot.tools.push(src);
+    subNodesByParent.set(c.to, slot);
+  }
+
+  // Flow nodes = everything that isn't an attached sub-node type.
+  const flowNodes = wf.nodes.filter((n) => !isSubNode(n.type));
+  const isFlow = new Set(flowNodes.map((n) => n.id));
+
   const outgoing = new Map<string, Array<{ to: string; fromPort: string }>>();
   const indegree = new Map<string, number>();
-  for (const n of wf.nodes) {
+  for (const n of flowNodes) {
     outgoing.set(n.id, []);
     indegree.set(n.id, 0);
   }
   for (const c of wf.connections) {
-    if (!nodesById.has(c.from) || !nodesById.has(c.to)) continue;
+    if (isSubPort(c.toPort)) continue; // sub-node attachment, not a flow edge
+    if (!isFlow.has(c.from) || !isFlow.has(c.to)) continue;
     outgoing.get(c.from)!.push({ to: c.to, fromPort: c.fromPort ?? "main" });
     indegree.set(c.to, (indegree.get(c.to) ?? 0) + 1);
   }
 
   // Seed inputs: the matched webhook node, else all triggers, else all roots.
   const inputs = new Map<string, ExecItem[]>();
-  const triggers = wf.nodes.filter((n) => isTrigger(n));
-  const roots = wf.nodes.filter((n) => (indegree.get(n.id) ?? 0) === 0);
+  const triggers = flowNodes.filter((n) => isTrigger(n));
+  const roots = flowNodes.filter((n) => (indegree.get(n.id) ?? 0) === 0);
   const seedTargets = opts.seedNodeId
     ? [opts.seedNodeId]
     : (triggers.length ? triggers : roots).map((n) => n.id);
   for (const id of seedTargets) inputs.set(id, seedItems);
 
-  // Kahn's topological order.
-  const queue = wf.nodes.filter((n) => (indegree.get(n.id) ?? 0) === 0).map((n) => n.id);
+  // Kahn's topological order over flow nodes only.
+  const queue = flowNodes.filter((n) => (indegree.get(n.id) ?? 0) === 0).map((n) => n.id);
   const deg = new Map(indegree);
   const order: string[] = [];
   while (queue.length) {
@@ -77,10 +99,10 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
       if ((deg.get(edge.to) ?? 0) === 0) queue.push(edge.to);
     }
   }
-  // Cyclic / unreachable nodes never reach indegree 0. Run them as "skipped"
-  // rather than executing with bogus inputs.
+  // Cyclic / unreachable flow nodes never reach indegree 0. Run them as
+  // "skipped" rather than executing with bogus inputs.
   const reachable = new Set(order);
-  const execOrder = [...order, ...wf.nodes.filter((n) => !reachable.has(n.id)).map((n) => n.id)];
+  const execOrder = [...order, ...flowNodes.filter((n) => !reachable.has(n.id)).map((n) => n.id)];
 
   let failed = false;
   for (const nodeId of execOrder) {
@@ -133,6 +155,7 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
         items: input,
         now: nowIso,
         vars,
+        subNodes: subNodesByParent.get(nodeId) ?? { tools: [] },
         getParam: (key, item) =>
           resolveValue(node.config?.[key], { item: item ?? input[0] ?? { json: {} }, now: nowIso, vars }),
         log: (m) => messages.push(m),

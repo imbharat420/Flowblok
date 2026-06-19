@@ -7,11 +7,20 @@
 import type { ExecItem, WorkflowNode } from "@/lib/types";
 import { resolveValue } from "./expressions";
 
+// Sub-nodes attached to this node via its sub-ports (AI Agent uses these).
+export interface SubNodes {
+  model?: WorkflowNode;
+  memory?: WorkflowNode;
+  tools: WorkflowNode[];
+}
+
 export interface NodeExecContext {
   node: WorkflowNode;
   items: ExecItem[];
   now: string;
   vars: Record<string, unknown>;
+  /** Sub-nodes attached to this node (Chat Model / Memory / Tool). */
+  subNodes: SubNodes;
   /** Resolve config[key] (evaluating {{expressions}}) against an item. */
   getParam: (key: string, item?: ExecItem) => unknown;
   /** Append a line to this node's run log. */
