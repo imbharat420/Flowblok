@@ -166,6 +166,43 @@ export interface WorkflowConnection {
   id: string;
   from: string; // node id
   to: string; // node id
+  fromPort?: string; // output port on the source node (e.g. "true"/"false" for If); default "main"
+}
+
+// ----- Execution model (n8n-style: items flow between nodes) -----
+
+export interface ExecItem {
+  json: Record<string, unknown>;
+}
+
+export type RunTrigger = "manual" | "webhook" | "schedule" | "form";
+export type RunStatus = "success" | "error" | "running";
+export type NodeRunStatus = "success" | "error" | "skipped";
+
+export interface NodeRunLog {
+  nodeId: string;
+  nodeName: string;
+  nodeType: string;
+  status: NodeRunStatus;
+  startedAt: string;
+  finishedAt: string;
+  itemsIn: number;
+  itemsOut: number;
+  output: ExecItem[]; // capped sample for the run viewer
+  messages: string[]; // handler log lines
+  error?: string;
+}
+
+export interface WorkflowRun {
+  id: string;
+  workflowId: string;
+  status: RunStatus;
+  trigger: RunTrigger;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number;
+  nodeLogs: NodeRunLog[];
+  error?: string;
 }
 
 // ----- Identity, roles & access (super-admin management) -----
