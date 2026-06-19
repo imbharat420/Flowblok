@@ -129,6 +129,20 @@ export interface UpdateStoryInput {
 
 export type NodeKind = "trigger" | "logic" | "action" | "integration";
 
+// A configurable field on a node type — rendered as a form control in the
+// builder's inspector and stored on WorkflowNode.config[key].
+export type NodeParamType = "text" | "textarea" | "number" | "boolean" | "select";
+
+export interface NodeParam {
+  key: string;
+  label: string;
+  type: NodeParamType;
+  placeholder?: string;
+  options?: string[]; // for type: "select"
+  default?: string | number | boolean;
+  hint?: string;
+}
+
 export interface NodeType {
   type: string; // e.g. "webhook", "if", "send_email"
   label: string;
@@ -136,6 +150,7 @@ export interface NodeType {
   kind: NodeKind;
   category: string; // palette group
   description: string;
+  params?: NodeParam[];
 }
 
 export interface WorkflowNode {

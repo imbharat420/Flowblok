@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { getIcon } from "@/lib/icon";
-import type { NodeKind, NodeType, Workflow, WorkflowNode, WorkflowStatus } from "@/lib/types";
-import { ChevronLeft, Play, Plus, Loader2, Save, Check } from "lucide-react";
+import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowStatus } from "@/lib/types";
+import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline } from "lucide-react";
 
 const NODE_W = 184;
 const NODE_H = 60;
@@ -25,12 +25,16 @@ export default function WorkflowCanvasPage() {
   const [wf, setWf] = useState<Workflow | null>(null);
   const [types, setTypes] = useState<NodeType[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedConn, setSelectedConn] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [connectFrom, setConnectFrom] = useState<string | null>(null);
+  const [linkPos, setLinkPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
+  const connect = useRef<{ from: string; el: HTMLElement } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -54,20 +58,30 @@ export default function WorkflowCanvasPage() {
 
   const typeOf = useCallback((t: string) => types.find((x) => x.type === t), [types]);
 
-  // ---- node dragging ----
+  // ---- node dragging + connection dragging (shared global listeners) ----
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const d = drag.current;
-      if (!d) return;
-      // Read the canvas rect fresh each move so scrolling stays accurate.
-      const rect = d.el.getBoundingClientRect();
-      const x = Math.max(0, e.clientX - rect.left - d.offX);
-      const y = Math.max(0, e.clientY - rect.top - d.offY);
-      setWf((prev) =>
-        prev ? { ...prev, nodes: prev.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)) } : prev,
-      );
+      if (d) {
+        // Capture the ref locally — mouseup may null drag.current before this
+        // updater runs, so the closure must not read the live ref.
+        const rect = d.el.getBoundingClientRect();
+        const x = Math.max(0, e.clientX - rect.left - d.offX);
+        const y = Math.max(0, e.clientY - rect.top - d.offY);
+        setWf((prev) =>
+          prev ? { ...prev, nodes: prev.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)) } : prev,
+        );
+      } else if (connect.current) {
+        const rect = connect.current.el.getBoundingClientRect();
+        setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      }
     };
-    const onUp = () => (drag.current = null);
+    const onUp = () => {
+      drag.current = null;
+      connect.current = null;
+      setConnectFrom(null);
+      setLinkPos(null);
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
@@ -76,25 +90,105 @@ export default function WorkflowCanvasPage() {
     };
   }, []);
 
+  // ---- delete with keyboard ----
+  const deleteNode = useCallback((nodeId: string) => {
+    setWf((prev) =>
+      prev
+        ? {
+            ...prev,
+            nodes: prev.nodes.filter((n) => n.id !== nodeId),
+            connections: prev.connections.filter((c) => c.from !== nodeId && c.to !== nodeId),
+          }
+        : prev,
+    );
+    setSelected((s) => (s === nodeId ? null : s));
+  }, []);
+
+  const deleteConn = useCallback((connId: string) => {
+    setWf((prev) => (prev ? { ...prev, connections: prev.connections.filter((c) => c.id !== connId) } : prev));
+    setSelectedConn((s) => (s === connId ? null : s));
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const el = document.activeElement?.tagName;
+      if (el === "INPUT" || el === "TEXTAREA" || el === "SELECT") return; // don't hijack typing
+      if (selectedConn) {
+        e.preventDefault();
+        deleteConn(selectedConn);
+      } else if (selected) {
+        e.preventDefault();
+        deleteNode(selected);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selected, selectedConn, deleteNode, deleteConn]);
+
   const startDrag = (e: React.MouseEvent, n: WorkflowNode) => {
     const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
     const rect = canvas.getBoundingClientRect();
-    // Grab offset = pointer position INSIDE the node, in canvas coordinates.
     drag.current = { id: n.id, offX: e.clientX - rect.left - n.x, offY: e.clientY - rect.top - n.y, el: canvas };
     setSelected(n.id);
+    setSelectedConn(null);
+  };
+
+  const startConnect = (e: React.MouseEvent, n: WorkflowNode) => {
+    e.stopPropagation(); // don't start a node drag
+    const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
+    const rect = canvas.getBoundingClientRect();
+    connect.current = { from: n.id, el: canvas };
+    setConnectFrom(n.id);
+    setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const completeConnect = (to: string) => {
+    const from = connect.current?.from;
+    if (!from || from === to) return;
+    setWf((prev) => {
+      if (!prev) return prev;
+      if (prev.connections.some((c) => c.from === from && c.to === to)) return prev;
+      return { ...prev, connections: [...prev.connections, { id: `c_${Date.now().toString(36)}`, from, to }] };
+    });
   };
 
   const addNode = (t: NodeType) => {
     if (!wf) return;
+    const config: Record<string, unknown> = {};
+    (t.params ?? []).forEach((p) => {
+      if (p.default !== undefined) config[p.key] = p.default;
+    });
     const node: WorkflowNode = {
-      id: `n_${wf.nodes.length + 1}_${t.type}`,
+      id: `n_${Date.now().toString(36)}`,
       type: t.type,
       name: t.label,
       x: 80 + (wf.nodes.length % 4) * 40,
       y: 360,
+      config,
     };
     setWf({ ...wf, nodes: [...wf.nodes, node] });
     setSelected(node.id);
+    setSelectedConn(null);
+  };
+
+  const setNodeField = (nodeId: string, patch: Partial<WorkflowNode>) => {
+    setWf((prev) =>
+      prev ? { ...prev, nodes: prev.nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)) } : prev,
+    );
+  };
+
+  const setNodeConfig = (nodeId: string, key: string, value: unknown) => {
+    setWf((prev) =>
+      prev
+        ? {
+            ...prev,
+            nodes: prev.nodes.map((n) =>
+              n.id === nodeId ? { ...n, config: { ...(n.config ?? {}), [key]: value } } : n,
+            ),
+          }
+        : prev,
+    );
   };
 
   const run = async () => {
@@ -151,6 +245,8 @@ export default function WorkflowCanvasPage() {
 
   const selNode = wf.nodes.find((n) => n.id === selected) ?? null;
   const selType = selNode ? typeOf(selNode.type) : null;
+  const selConn = wf.connections.find((c) => c.id === selectedConn) ?? null;
+  const connectSrc = connectFrom ? wf.nodes.find((n) => n.id === connectFrom) : null;
   const grouped = groupByCategory(types);
 
   return (
@@ -231,15 +327,20 @@ export default function WorkflowCanvasPage() {
         </div>
 
         {/* canvas */}
-        <div className="relative flex-1 overflow-auto bg-[#0a0a0a]" onClick={() => setSelected(null)}>
+        <div
+          className="relative flex-1 overflow-auto bg-[#0a0a0a]"
+          onClick={() => {
+            setSelected(null);
+            setSelectedConn(null);
+          }}
+        >
           <div
             data-canvas
             className="relative"
             style={{
               width: canvasSize.w,
               height: canvasSize.h,
-              backgroundImage:
-                "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
+              backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
               backgroundSize: "22px 22px",
             }}
           >
@@ -254,17 +355,45 @@ export default function WorkflowCanvasPage() {
                 const x2 = b.x;
                 const y2 = b.y + NODE_H / 2;
                 const mx = (x1 + x2) / 2;
+                const d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
                 const active = doneIds.has(c.from) && (doneIds.has(c.to) || runningId === c.to);
+                const isSel = selectedConn === c.id;
                 return (
-                  <path
-                    key={c.id}
-                    d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
-                    fill="none"
-                    stroke={active ? "#2563eb" : "rgba(255,255,255,0.18)"}
-                    strokeWidth={active ? 2 : 1.5}
-                  />
+                  <g key={c.id}>
+                    {/* wide invisible hit target so the thin edge is easy to click */}
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={14}
+                      style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedConn(c.id);
+                        setSelected(null);
+                      }}
+                    />
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke={isSel ? "#f87171" : active ? "#2563eb" : "rgba(255,255,255,0.18)"}
+                      strokeWidth={isSel ? 2.5 : active ? 2 : 1.5}
+                      style={{ pointerEvents: "none" }}
+                    />
+                  </g>
                 );
               })}
+              {/* live link being dragged */}
+              {connectSrc && linkPos && (
+                <path
+                  d={`M ${connectSrc.x + NODE_W} ${connectSrc.y + NODE_H / 2} L ${linkPos.x} ${linkPos.y}`}
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
             </svg>
 
             {/* nodes */}
@@ -280,6 +409,9 @@ export default function WorkflowCanvasPage() {
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     startDrag(e, n);
+                  }}
+                  onMouseUp={() => {
+                    if (connect.current && connect.current.from !== n.id) completeConnect(n.id);
                   }}
                   onClick={(e) => e.stopPropagation()}
                   className={cn(
@@ -307,8 +439,13 @@ export default function WorkflowCanvasPage() {
                     </span>
                     {isDone && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ok" />}
                   </div>
-                  {/* ports */}
-                  <span className="absolute -right-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-[#0a0a0a] bg-[rgba(255,255,255,0.4)]" />
+                  {/* output port — drag from here to connect */}
+                  <span
+                    title="Drag to connect"
+                    onMouseDown={(e) => startConnect(e, n)}
+                    className="absolute -right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-[rgba(255,255,255,0.55)] hover:bg-accent"
+                  />
+                  {/* input port */}
                   <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-[#0a0a0a] bg-[rgba(255,255,255,0.4)]" />
                 </div>
               );
@@ -320,37 +457,151 @@ export default function WorkflowCanvasPage() {
         <aside className="w-[300px] shrink-0 overflow-y-auto border-l border-border bg-surface p-4">
           {selNode ? (
             <>
-              <p className="label-caps mb-3">Node · {selType?.kind}</p>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="label-caps">Node · {selType?.kind}</p>
+                <button
+                  onClick={() => deleteNode(selNode.id)}
+                  title="Delete node"
+                  className="flex items-center gap-1 rounded-md border border-err/40 px-2 py-1 text-[11px] font-medium text-err transition-colors hover:bg-err/10"
+                >
+                  <Trash2 className="h-3 w-3" /> Delete
+                </button>
+              </div>
               <label className="block">
                 <span className="mb-1 block text-[12px] text-fg-muted">Name</span>
                 <input
                   value={selNode.name}
-                  onChange={(e) =>
-                    setWf({ ...wf, nodes: wf.nodes.map((n) => (n.id === selNode.id ? { ...n, name: e.target.value } : n)) })
-                  }
-                  className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none"
+                  onChange={(e) => setNodeField(selNode.id, { name: e.target.value })}
+                  className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent"
                 />
               </label>
-              <div className="mt-3 rounded-md border border-border bg-bg p-3">
+
+              {selType?.params && selType.params.length > 0 && (
+                <div className="mt-4 space-y-3 border-t border-border pt-4">
+                  <p className="label-caps">Parameters</p>
+                  {selType.params.map((p) => (
+                    <ParamField
+                      key={p.key}
+                      param={p}
+                      value={selNode.config?.[p.key]}
+                      onChange={(v) => setNodeConfig(selNode.id, p.key, v)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 rounded-md border border-border bg-bg p-3">
                 <p className="text-[12px] font-medium text-fg">{selType?.label}</p>
                 <p className="mt-1 text-[12px] text-fg-muted">{selType?.description}</p>
               </div>
-              <p className="mt-4 text-[12px] text-fg-subtle">
-                Node config (credentials, parameters, expressions) renders here in the full builder.
-              </p>
+            </>
+          ) : selConn ? (
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="label-caps">Connection</p>
+                <button
+                  onClick={() => deleteConn(selConn.id)}
+                  className="flex items-center gap-1 rounded-md border border-err/40 px-2 py-1 text-[11px] font-medium text-err transition-colors hover:bg-err/10"
+                >
+                  <Trash2 className="h-3 w-3" /> Delete
+                </button>
+              </div>
+              <div className="space-y-2 rounded-md border border-border bg-bg p-3 text-[12px]">
+                <div className="flex items-center gap-2">
+                  <Spline className="h-3.5 w-3.5 text-fg-subtle" />
+                  <span className="text-fg-muted">
+                    {wf.nodes.find((n) => n.id === selConn.from)?.name ?? selConn.from}
+                    <span className="px-1 text-fg-subtle">→</span>
+                    {wf.nodes.find((n) => n.id === selConn.to)?.name ?? selConn.to}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-3 text-[11px] text-fg-subtle">Press Delete to remove, or click another item.</p>
             </>
           ) : (
             <div className="mt-8 text-center">
               <p className="text-[13px] text-fg-muted">Select a node to configure it,</p>
               <p className="text-[13px] text-fg-muted">or add one from the palette.</p>
-              <button className="mx-auto mt-4 flex items-center gap-1.5 rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] text-fg-muted">
-                <Plus className="h-3.5 w-3.5" /> Drag nodes to reposition
-              </button>
+              <div className="mx-auto mt-4 flex max-w-[220px] flex-col gap-1.5 text-left text-[11px] text-fg-subtle">
+                <span className="flex items-center gap-1.5">
+                  <Plus className="h-3 w-3" /> Click a node in the palette to add it
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Spline className="h-3 w-3" /> Drag the right dot of a node to connect
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Trash2 className="h-3 w-3" /> Select + press Delete to remove
+                </span>
+              </div>
             </div>
           )}
         </aside>
       </div>
     </div>
+  );
+}
+
+function ParamField({
+  param,
+  value,
+  onChange,
+}: {
+  param: NodeParam;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const base =
+    "w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent";
+
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[12px] text-fg-muted">{param.label}</span>
+      {param.type === "textarea" ? (
+        <textarea
+          rows={4}
+          value={String(value ?? param.default ?? "")}
+          placeholder={param.placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(base, "resize-y font-mono text-[12px]")}
+        />
+      ) : param.type === "select" ? (
+        <select
+          value={String(value ?? param.default ?? "")}
+          onChange={(e) => onChange(e.target.value)}
+          className={base}
+        >
+          {(param.options ?? []).map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      ) : param.type === "boolean" ? (
+        <input
+          type="checkbox"
+          checked={Boolean(value ?? param.default)}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-4 w-4 accent-accent"
+        />
+      ) : param.type === "number" ? (
+        <input
+          type="number"
+          value={value === undefined || value === null ? String(param.default ?? "") : String(value)}
+          placeholder={param.placeholder}
+          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+          className={base}
+        />
+      ) : (
+        <input
+          type="text"
+          value={String(value ?? param.default ?? "")}
+          placeholder={param.placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={base}
+        />
+      )}
+      {param.hint && <span className="mt-1 block text-[11px] text-fg-subtle">{param.hint}</span>}
+    </label>
   );
 }
 
