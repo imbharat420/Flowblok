@@ -22,6 +22,8 @@ export interface NodeExecContext {
   vars: Record<string, unknown>;
   /** Sub-nodes attached to this node (Chat Model / Memory / Tool). */
   subNodes: SubNodes;
+  /** Resolve a credential's raw secret data by id (server-side only). */
+  getCredential: (id: string) => Record<string, string> | undefined;
   /** Resolve config[key] (evaluating {{expressions}}) against an item. */
   getParam: (key: string, item?: ExecItem) => unknown;
   /** Append a line to this node's run log. */
@@ -111,7 +113,7 @@ const codeHandler: NodeHandler = async ({ items, node, log }) => {
   return { items: out };
 };
 
-const httpHandler: NodeHandler = async ({ items, getParam, log }) => {
+const httpHandler: NodeHandler = async ({ items, getParam, log, getCredential }) => {
   const src = items.length ? items : [{ json: {} }];
   const out: ExecItem[] = [];
   for (const item of src) {
@@ -122,12 +124,25 @@ const httpHandler: NodeHandler = async ({ items, getParam, log }) => {
     if (!url) throw new Error("HTTP node: URL is empty");
     assertSafeUrl(url); // block SSRF to internal/loopback hosts
     const hasBody = method !== "GET" && method !== "HEAD" && bodyRaw !== undefined && bodyRaw !== "";
+
+    const headers: Record<string, string> = {};
+    if (hasBody) headers["content-type"] = "application/json";
+    // Header Auth: pull the header name/value from a credential (server-side).
+    if (String(getParam("authentication", item) ?? "None") === "Header Auth") {
+      const cred = getCredential(String(getParam("credential", item) ?? ""));
+      const value = cred?.value ?? cred?.token ?? cred?.apiKey ?? cred?.key ?? "";
+      if (value) {
+        headers[cred?.name || cred?.header || "Authorization"] = value;
+        log("auth: header from credential");
+      }
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000); // bound hung requests
     try {
       const res = await fetch(url, {
         method,
-        headers: hasBody ? { "content-type": "application/json" } : undefined,
+        headers: Object.keys(headers).length ? headers : undefined,
         body: hasBody ? (typeof bodyRaw === "string" ? bodyRaw : JSON.stringify(bodyRaw)) : undefined,
         signal: controller.signal,
       });

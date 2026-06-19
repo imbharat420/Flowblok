@@ -11,6 +11,7 @@ import { resolveValue } from "./expressions";
 import { getHandler, type SubNodes } from "./handlers";
 import { saveRun } from "./runs";
 import { workflowsRepository } from "../workflows.repository";
+import { credentialsService } from "@/server/credentials/credentials.service";
 import "./register"; // ensure all handlers are registered
 
 const MAX_OUTPUT_SAMPLE = 5;
@@ -165,6 +166,7 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
         now: nowIso,
         vars,
         subNodes: subNodesByParent.get(nodeId) ?? { tools: [] },
+        getCredential: (cid: string) => credentialsService.get(cid)?.data,
         getParam: (key, item) =>
           resolveValue(node.config?.[key], { item: item ?? input[0] ?? { json: {} }, now: nowIso, vars }),
         log: (m) => messages.push(m),

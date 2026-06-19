@@ -66,6 +66,7 @@ const NODE_TYPES: NodeType[] = [
     params: [
       { key: "table", label: "Table", type: "text", placeholder: "orders" },
       { key: "operation", label: "Operation", type: "select", options: ["insert", "update", "upsert"], default: "insert" },
+      { key: "matchField", label: "Match on field", type: "text", placeholder: "id", hint: "Existing rows are matched on this field.", showWhen: { key: "operation", equals: ["update", "upsert"] } },
     ],
   },
   {
@@ -91,7 +92,9 @@ const NODE_TYPES: NodeType[] = [
     params: [
       { key: "method", label: "Method", type: "select", options: ["GET", "POST", "PUT", "PATCH", "DELETE"], default: "GET" },
       { key: "url", label: "URL", type: "text", placeholder: "https://api.example.com/v1/…" },
-      { key: "body", label: "Body (JSON)", type: "textarea", placeholder: "{ \"key\": \"value\" }" },
+      { key: "authentication", label: "Authentication", type: "select", options: ["None", "Header Auth"], default: "None" },
+      { key: "credential", label: "Credential", type: "credential", credentialType: "http_header", showWhen: { key: "authentication", equals: ["Header Auth"] } },
+      { key: "body", label: "Body (JSON)", type: "textarea", placeholder: "{ \"key\": \"value\" }", showWhen: { key: "method", equals: ["POST", "PUT", "PATCH"] } },
     ],
   },
 
@@ -128,6 +131,7 @@ const NODE_TYPES: NodeType[] = [
       { key: "prompt", label: "Prompt", type: "textarea", placeholder: "Summarize this: {{ $json.text }}" },
       { key: "model", label: "Model", type: "select", options: ["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"], default: "claude-opus-4-8" },
       { key: "system", label: "System prompt", type: "textarea", placeholder: "You are a helpful assistant." },
+      { key: "credential", label: "Anthropic credential", type: "credential", credentialType: "anthropic", hint: "Optional — overrides ANTHROPIC_API_KEY." },
     ],
   },
 

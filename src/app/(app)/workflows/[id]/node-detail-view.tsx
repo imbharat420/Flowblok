@@ -4,7 +4,10 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { getIcon } from "@/lib/icon";
 import type { ExecItem, NodeParam, NodeRunLog, NodeType, WorkflowNode } from "@/lib/types";
+import { visibleParams } from "@/lib/params";
 import { X, Play, Loader2 } from "lucide-react";
+
+type CredOption = { id: string; name: string; type: string };
 
 // n8n-style Node Detail View: a full-screen modal with INPUT | Parameters/
 // Settings | OUTPUT. Opened by double-clicking a node on the canvas.
@@ -13,6 +16,7 @@ export function NodeDetailView({
   nodeType,
   runLog,
   running,
+  credentials,
   onChangeName,
   onChangeConfig,
   onRun,
@@ -22,6 +26,7 @@ export function NodeDetailView({
   nodeType?: NodeType;
   runLog: NodeRunLog | null;
   running: boolean;
+  credentials?: CredOption[];
   onChangeName: (name: string) => void;
   onChangeConfig: (key: string, value: unknown) => void;
   onRun: () => void;
@@ -29,7 +34,7 @@ export function NodeDetailView({
 }) {
   const [tab, setTab] = useState<"parameters" | "settings">("parameters");
   const Icon = getIcon(nodeType?.icon ?? "Box");
-  const params = nodeType?.params ?? [];
+  const params = visibleParams(nodeType?.params, node.config);
   const notes = String(node.config?._notes ?? "");
   const continueOnFail = Boolean(node.config?._continueOnFail);
 
@@ -89,7 +94,13 @@ export function NodeDetailView({
               {tab === "parameters" ? (
                 params.length ? (
                   params.map((p) => (
-                    <FxField key={p.key} param={p} value={node.config?.[p.key]} onChange={(v) => onChangeConfig(p.key, v)} />
+                    <FxField
+                      key={p.key}
+                      param={p}
+                      value={node.config?.[p.key]}
+                      credentials={credentials}
+                      onChange={(v) => onChangeConfig(p.key, v)}
+                    />
                   ))
                 ) : (
                   <p className="text-[12px] text-fg-muted">This node has no parameters.</p>
@@ -186,8 +197,18 @@ function Pane({
 
 // A parameter field with an n8n-style fx expression toggle: when on, the value
 // is edited as a {{ … }} expression instead of the typed control.
-function FxField({ param, value, onChange }: { param: NodeParam; value: unknown; onChange: (v: unknown) => void }) {
-  const exprable = param.type !== "boolean";
+function FxField({
+  param,
+  value,
+  credentials,
+  onChange,
+}: {
+  param: NodeParam;
+  value: unknown;
+  credentials?: CredOption[];
+  onChange: (v: unknown) => void;
+}) {
+  const exprable = param.type !== "boolean" && param.type !== "credential";
   const [fx, setFx] = useState(typeof value === "string" && value.includes("{{"));
   const base = "w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent";
 
@@ -217,6 +238,17 @@ function FxField({ param, value, onChange }: { param: NodeParam; value: unknown;
           placeholder="{{ $json.field }}"
           className={cn(base, "font-mono text-[12px]")}
         />
+      ) : param.type === "credential" ? (
+        <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={base}>
+          <option value="">— none —</option>
+          {(credentials ?? [])
+            .filter((c) => !param.credentialType || c.type === param.credentialType)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.type})
+              </option>
+            ))}
+        </select>
       ) : param.type === "textarea" ? (
         <textarea
           rows={4}

@@ -157,11 +157,14 @@ function modelFor(subNodes: SubNodes, getParam: (k: string, i?: ExecItem) => unk
   return String(getParam("model", item) ?? DEFAULT_MODEL);
 }
 
-const aiAgent: NodeHandler = async ({ items, getParam, log, subNodes }) => {
-  const key = process.env.ANTHROPIC_API_KEY;
+const aiAgent: NodeHandler = async ({ items, getParam, log, subNodes, getCredential }) => {
   const all = items.length ? items : [{ json: {} }];
   const src = all.slice(0, MAX_ITEMS);
   if (all.length > MAX_ITEMS) log(`capped to ${MAX_ITEMS} of ${all.length} items`);
+  // Prefer an attached Anthropic credential, fall back to the env key.
+  const cred = getCredential(String(getParam("credential", src[0]) ?? ""));
+  const key = cred?.apiKey ?? cred?.key ?? cred?.value ?? process.env.ANTHROPIC_API_KEY;
+  if (cred) log("using Anthropic credential");
 
   const tools = buildTools(subNodes.tools);
   const toolByName = new Map(tools.map((t) => [t.def.name, t]));

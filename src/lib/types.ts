@@ -131,7 +131,7 @@ export type NodeKind = "trigger" | "logic" | "action" | "integration";
 
 // A configurable field on a node type — rendered as a form control in the
 // builder's inspector and stored on WorkflowNode.config[key].
-export type NodeParamType = "text" | "textarea" | "number" | "boolean" | "select";
+export type NodeParamType = "text" | "textarea" | "number" | "boolean" | "select" | "credential";
 
 export interface NodeParam {
   key: string;
@@ -141,6 +141,10 @@ export interface NodeParam {
   options?: string[]; // for type: "select"
   default?: string | number | boolean;
   hint?: string;
+  credentialType?: string; // for type "credential": only offer credentials of this type
+  // Conditional visibility (n8n's displayOptions): show this param only when
+  // another param's value is one of `equals`. Powers Resource→Operation cascades.
+  showWhen?: { key: string; equals: string[] };
 }
 
 export interface NodeType {

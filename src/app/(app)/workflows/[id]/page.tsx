@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { getIcon } from "@/lib/icon";
 import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
 import { SUB_PORTS, SUB_PORT_LABEL, SUB_NODE_PORT, isSubPort, type SubPort } from "@/lib/subnodes";
+import { visibleParams } from "@/lib/params";
 import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
 import { NodeDetailView } from "./node-detail-view";
 
@@ -36,6 +37,8 @@ export default function WorkflowCanvasPage() {
   const [lastRun, setLastRun] = useState<WorkflowRun | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [ndvNode, setNdvNode] = useState<string | null>(null);
+  const [creds, setCreds] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [palQuery, setPalQuery] = useState("");
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [linkPos, setLinkPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
@@ -77,6 +80,14 @@ export default function WorkflowCanvasPage() {
       }
     });
   }, [id]);
+
+  // Credentials list for credential-picker params.
+  useEffect(() => {
+    fetch("/api/credentials")
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d: { items?: Array<{ id: string; name: string; type: string }> }) => setCreds(d.items ?? []))
+      .catch(() => {});
+  }, []);
 
   const typeOf = useCallback((t: string) => types.find((x) => x.type === t), [types]);
 
@@ -339,7 +350,10 @@ export default function WorkflowCanvasPage() {
   const selType = selNode ? typeOf(selNode.type) : null;
   const selConn = wf.connections.find((c) => c.id === selectedConn) ?? null;
   const connectSrc = connectFrom ? wf.nodes.find((n) => n.id === connectFrom) : null;
-  const grouped = groupByCategory(types);
+  const q = palQuery.trim().toLowerCase();
+  const grouped = groupByCategory(
+    q ? types.filter((t) => `${t.label} ${t.category} ${t.description}`.toLowerCase().includes(q)) : types,
+  );
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -393,6 +407,13 @@ export default function WorkflowCanvasPage() {
         {/* node palette */}
         <div className="w-[220px] shrink-0 overflow-y-auto border-r border-border bg-surface px-2 py-3">
           <p className="label-caps px-1.5 pb-2">Add node</p>
+          <input
+            value={palQuery}
+            onChange={(e) => setPalQuery(e.target.value)}
+            placeholder="Search nodes…"
+            className="mb-3 w-full rounded-md border border-border bg-bg px-2 py-1 text-[12px] text-fg outline-none focus:border-accent"
+          />
+          {grouped.length === 0 && <p className="px-1.5 text-[12px] text-fg-subtle">No nodes match.</p>}
           {grouped.map(([cat, items]) => (
             <div key={cat} className="mb-3">
               <p className="px-1.5 pb-1 text-[11px] text-fg-subtle">{cat}</p>
@@ -711,14 +732,15 @@ export default function WorkflowCanvasPage() {
                 />
               </label>
 
-              {selType?.params && selType.params.length > 0 && (
+              {selType?.params && visibleParams(selType.params, selNode.config).length > 0 && (
                 <div className="mt-4 space-y-3 border-t border-border pt-4">
                   <p className="label-caps">Parameters</p>
-                  {selType.params.map((p) => (
+                  {visibleParams(selType.params, selNode.config).map((p) => (
                     <ParamField
                       key={p.key}
                       param={p}
                       value={selNode.config?.[p.key]}
+                      credentials={creds}
                       onChange={(v) => setNodeConfig(selNode.id, p.key, v)}
                     />
                   ))}
@@ -784,6 +806,7 @@ export default function WorkflowCanvasPage() {
               nodeType={typeOf(nd.type)}
               runLog={log}
               running={running}
+              credentials={creds}
               onChangeName={(name) => setNodeField(nd.id, { name })}
               onChangeConfig={(k, v) => setNodeConfig(nd.id, k, v)}
               onRun={run}
@@ -798,10 +821,12 @@ export default function WorkflowCanvasPage() {
 function ParamField({
   param,
   value,
+  credentials,
   onChange,
 }: {
   param: NodeParam;
   value: unknown;
+  credentials?: Array<{ id: string; name: string; type: string }>;
   onChange: (v: unknown) => void;
 }) {
   const base =
@@ -810,7 +835,18 @@ function ParamField({
   return (
     <label className="block">
       <span className="mb-1 block text-[12px] text-fg-muted">{param.label}</span>
-      {param.type === "textarea" ? (
+      {param.type === "credential" ? (
+        <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={base}>
+          <option value="">— none —</option>
+          {(credentials ?? [])
+            .filter((c) => !param.credentialType || c.type === param.credentialType)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.type})
+              </option>
+            ))}
+        </select>
+      ) : param.type === "textarea" ? (
         <textarea
           rows={4}
           value={String(value ?? param.default ?? "")}
