@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { getIcon } from "@/lib/icon";
-import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowStatus } from "@/lib/types";
-import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline } from "lucide-react";
+import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
+import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
 
 const NODE_W = 184;
 const NODE_H = 60;
@@ -31,10 +31,12 @@ export default function WorkflowCanvasPage() {
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [lastRun, setLastRun] = useState<WorkflowRun | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [linkPos, setLinkPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
-  const connect = useRef<{ from: string; el: HTMLElement } | null>(null);
+  const connect = useRef<{ from: string; port: string; el: HTMLElement } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -134,22 +136,24 @@ export default function WorkflowCanvasPage() {
     setSelectedConn(null);
   };
 
-  const startConnect = (e: React.MouseEvent, n: WorkflowNode) => {
+  const startConnect = (e: React.MouseEvent, n: WorkflowNode, port = "main") => {
     e.stopPropagation(); // don't start a node drag
     const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
     const rect = canvas.getBoundingClientRect();
-    connect.current = { from: n.id, el: canvas };
+    connect.current = { from: n.id, port, el: canvas };
     setConnectFrom(n.id);
     setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
   const completeConnect = (to: string) => {
-    const from = connect.current?.from;
-    if (!from || from === to) return;
+    const c = connect.current;
+    if (!c || c.from === to) return;
+    const { from, port } = c;
     setWf((prev) => {
       if (!prev) return prev;
-      if (prev.connections.some((c) => c.from === from && c.to === to)) return prev;
-      return { ...prev, connections: [...prev.connections, { id: `c_${Date.now().toString(36)}`, from, to }] };
+      if (prev.connections.some((x) => x.from === from && x.to === to && (x.fromPort ?? "main") === port)) return prev;
+      const conn = { id: `c_${Date.now().toString(36)}`, from, to, ...(port !== "main" ? { fromPort: port } : {}) };
+      return { ...prev, connections: [...prev.connections, conn] };
     });
   };
 
@@ -191,18 +195,36 @@ export default function WorkflowCanvasPage() {
     );
   };
 
+  // Real execution: persist the canvas, run it through the engine, then replay
+  // the per-node run log visually.
   const run = async () => {
     if (!wf || running) return;
     setRunning(true);
     setDoneIds(new Set());
-    const order = [...wf.nodes].sort((a, b) => a.x - b.x || a.y - b.y);
-    for (const n of order) {
-      setRunningId(n.id);
-      await delay(420);
-      setDoneIds((prev) => new Set(prev).add(n.id));
-    }
     setRunningId(null);
-    setRunning(false);
+    try {
+      await fetch(`/api/workflows/${wf.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: wf.name, status: wf.status, nodes: wf.nodes, connections: wf.connections }),
+      });
+      const res = await fetch(`/api/workflows/${wf.id}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: {} }),
+      });
+      const result = (await res.json()) as WorkflowRun;
+      setLastRun(result);
+      setLogOpen(true);
+      for (const nl of result.nodeLogs) {
+        setRunningId(nl.nodeId);
+        await delay(260);
+        setDoneIds((prev) => new Set(prev).add(nl.nodeId));
+      }
+    } finally {
+      setRunningId(null);
+      setRunning(false);
+    }
   };
 
   // Persist the whole canvas (name, status, nodes, connections).
@@ -376,7 +398,17 @@ export default function WorkflowCanvasPage() {
                     <path
                       d={d}
                       fill="none"
-                      stroke={isSel ? "#f87171" : active ? "#2563eb" : "rgba(255,255,255,0.18)"}
+                      stroke={
+                        isSel
+                          ? "#f87171"
+                          : active
+                            ? "#2563eb"
+                            : c.fromPort === "true"
+                              ? "rgba(34,197,94,0.55)"
+                              : c.fromPort === "false"
+                                ? "rgba(248,113,113,0.55)"
+                                : "rgba(255,255,255,0.18)"
+                      }
                       strokeWidth={isSel ? 2.5 : active ? 2 : 1.5}
                       style={{ pointerEvents: "none" }}
                     />
@@ -439,18 +471,96 @@ export default function WorkflowCanvasPage() {
                     </span>
                     {isDone && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ok" />}
                   </div>
-                  {/* output port — drag from here to connect */}
-                  <span
-                    title="Drag to connect"
-                    onMouseDown={(e) => startConnect(e, n)}
-                    className="absolute -right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-[rgba(255,255,255,0.55)] hover:bg-accent"
-                  />
+                  {/* output port(s) — drag to connect. If exposes true/false. */}
+                  {n.type === "if" ? (
+                    <>
+                      <span
+                        title="True branch"
+                        onMouseDown={(e) => startConnect(e, n, "true")}
+                        className="absolute -right-1.5 top-1/3 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-ok hover:brightness-125"
+                      />
+                      <span
+                        title="False branch"
+                        onMouseDown={(e) => startConnect(e, n, "false")}
+                        className="absolute -right-1.5 top-2/3 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-err hover:brightness-125"
+                      />
+                    </>
+                  ) : (
+                    <span
+                      title="Drag to connect"
+                      onMouseDown={(e) => startConnect(e, n, "main")}
+                      className="absolute -right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-[rgba(255,255,255,0.55)] hover:bg-accent"
+                    />
+                  )}
                   {/* input port */}
                   <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-[#0a0a0a] bg-[rgba(255,255,255,0.4)]" />
                 </div>
               );
             })}
           </div>
+
+          {lastRun && logOpen && (
+            <div
+              className="absolute inset-x-0 bottom-0 z-20 max-h-[45%] overflow-y-auto border-t border-border-strong bg-surface/95 backdrop-blur"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 flex items-center justify-between border-b border-border bg-surface px-4 py-2">
+                <div className="flex items-center gap-2 text-[12px]">
+                  <ScrollText className="h-3.5 w-3.5 text-fg-muted" />
+                  <span className="font-medium text-fg">Last run</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium capitalize",
+                      lastRun.status === "success"
+                        ? "bg-ok/15 text-ok"
+                        : lastRun.status === "error"
+                          ? "bg-err/15 text-err"
+                          : "bg-surface-2 text-fg-muted",
+                    )}
+                  >
+                    {lastRun.status}
+                  </span>
+                  <span className="text-fg-subtle">
+                    · {lastRun.durationMs}ms · {lastRun.trigger}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setLogOpen(false)}
+                  className="text-fg-muted hover:text-fg"
+                  aria-label="Close run log"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {lastRun.error && (
+                <p className="border-b border-err/30 bg-err/5 px-4 py-2 text-[12px] text-err">{lastRun.error}</p>
+              )}
+              <ul className="divide-y divide-border">
+                {lastRun.nodeLogs.map((nl) => (
+                  <li key={nl.nodeId} className="px-4 py-2">
+                    <div className="flex items-center gap-2 text-[12px]">
+                      {nl.status === "success" ? (
+                        <Check className="h-3.5 w-3.5 shrink-0 text-ok" />
+                      ) : nl.status === "error" ? (
+                        <CircleAlert className="h-3.5 w-3.5 shrink-0 text-err" />
+                      ) : (
+                        <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-fg-subtle" />
+                      )}
+                      <span className="font-medium text-fg">{nl.nodeName}</span>
+                      <span className="font-mono text-[11px] text-fg-subtle">{nl.nodeType}</span>
+                      <span className="text-fg-subtle">
+                        · {nl.itemsIn}→{nl.itemsOut}
+                      </span>
+                    </div>
+                    {nl.messages.length > 0 && (
+                      <p className="mt-0.5 pl-5 text-[11px] text-fg-muted">{nl.messages.join(" · ")}</p>
+                    )}
+                    {nl.error && <p className="mt-0.5 pl-5 text-[11px] text-err">{nl.error}</p>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* inspector */}

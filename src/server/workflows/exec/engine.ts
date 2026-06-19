@@ -39,8 +39,9 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
   saveRun(run);
 
   const nowIso = startedAt.toISOString();
-  const vars = opts.payload ?? {};
-  const seedItems: ExecItem[] = [{ json: opts.payload ?? {} }];
+  // Independent copies so node mutations never alias the shared trigger payload.
+  const vars = safeClone(opts.payload ?? {});
+  const seedItems: ExecItem[] = [{ json: safeClone(opts.payload ?? {}) }];
 
   const nodesById = new Map(wf.nodes.map((n) => [n.id, n]));
   const outgoing = new Map<string, Array<{ to: string; fromPort: string }>>();
@@ -76,14 +77,15 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
       if ((deg.get(edge.to) ?? 0) === 0) queue.push(edge.to);
     }
   }
-  if (order.length < wf.nodes.length) {
-    // Cycle: append the unreached nodes so they at least get logged as skipped.
-    for (const n of wf.nodes) if (!order.includes(n.id)) order.push(n.id);
-  }
+  // Cyclic / unreachable nodes never reach indegree 0. Run them as "skipped"
+  // rather than executing with bogus inputs.
+  const reachable = new Set(order);
+  const execOrder = [...order, ...wf.nodes.filter((n) => !reachable.has(n.id)).map((n) => n.id)];
 
   let failed = false;
-  for (const nodeId of order) {
-    const node = nodesById.get(nodeId)!;
+  for (const nodeId of execOrder) {
+    const node = nodesById.get(nodeId);
+    if (!node) continue;
     const input = inputs.get(nodeId) ?? [];
     const messages: string[] = [];
     const log: NodeRunLog = {
@@ -99,8 +101,26 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
       messages,
     };
 
+    if (!reachable.has(nodeId)) {
+      log.status = "skipped";
+      log.error = "Unreachable — part of a cycle";
+      log.finishedAt = new Date().toISOString();
+      run.nodeLogs.push(log);
+      continue;
+    }
+
     if (failed) {
       log.status = "skipped";
+      log.finishedAt = new Date().toISOString();
+      run.nodeLogs.push(log);
+      continue;
+    }
+
+    // A node with no input items did not have its branch taken — skip it
+    // rather than running its handler against a synthetic empty item.
+    if (input.length === 0) {
+      log.status = "skipped";
+      messages.push("no input items (branch not taken)");
       log.finishedAt = new Date().toISOString();
       run.nodeLogs.push(log);
       continue;
@@ -122,11 +142,14 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
       log.itemsOut = mainOut.length;
       log.output = capItems(mainOut);
 
-      // Distribute outputs to downstream nodes by port.
+      // Distribute outputs to downstream nodes by port. A branching node (e.g.
+      // If) routes by the connection's fromPort; legacy/unset edges default to
+      // the primary "true" port. Clone items so fan-out siblings can't mutate
+      // each other's data through a shared reference.
       for (const edge of outgoing.get(nodeId) ?? []) {
-        const portItems =
-          edge.fromPort !== "main" && result.branches ? (result.branches[edge.fromPort] ?? []) : mainOut;
-        inputs.set(edge.to, [...(inputs.get(edge.to) ?? []), ...portItems]);
+        const portItems = result.branches ? (result.branches[edge.fromPort ?? "true"] ?? []) : mainOut;
+        const cloned = portItems.map((it) => ({ json: safeClone(it.json) }));
+        inputs.set(edge.to, [...(inputs.get(edge.to) ?? []), ...cloned]);
       }
     } catch (err) {
       log.status = "error";
@@ -160,5 +183,19 @@ function isTrigger(node: WorkflowNode): boolean {
 }
 
 function capItems(items: ExecItem[]): ExecItem[] {
-  return items.slice(0, MAX_OUTPUT_SAMPLE).map((i) => ({ json: i.json }));
+  return items.slice(0, MAX_OUTPUT_SAMPLE).map((i) => ({ json: safeClone(i.json) }));
+}
+
+// Deep-copy item data defensively (handlers may produce non-structured-cloneable
+// values; fall back through JSON, then a shallow copy).
+function safeClone(o: Record<string, unknown>): Record<string, unknown> {
+  try {
+    return structuredClone(o);
+  } catch {
+    try {
+      return JSON.parse(JSON.stringify(o));
+    } catch {
+      return { ...o };
+    }
+  }
 }

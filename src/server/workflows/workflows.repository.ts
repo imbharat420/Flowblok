@@ -120,6 +120,16 @@ const NODE_TYPES: NodeType[] = [
       { key: "message", label: "Message", type: "textarea", placeholder: "New lead: {{ $json.name }}" },
     ],
   },
+
+  {
+    type: "ai_agent", label: "AI Agent", icon: "Sparkles", kind: "action", category: "AI",
+    description: "Generate a reply with Claude.",
+    params: [
+      { key: "prompt", label: "Prompt", type: "textarea", placeholder: "Summarize this: {{ $json.text }}" },
+      { key: "model", label: "Model", type: "select", options: ["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5"], default: "claude-opus-4-8" },
+      { key: "system", label: "System prompt", type: "textarea", placeholder: "You are a helpful assistant." },
+    ],
+  },
 ];
 
 const SEED_WORKFLOWS: Workflow[] = [

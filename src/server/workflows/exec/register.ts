@@ -2,3 +2,4 @@
 // registered before the engine runs. Add new handler modules here.
 import "./handlers";
 import "./handlers-integrations";
+import "./handlers-ai";

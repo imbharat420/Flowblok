@@ -85,11 +85,14 @@ const ifHandler: NodeHandler = ({ items, getParam, log }) => {
   return { items: yes, branches: { true: yes, false: no } };
 };
 
-const codeHandler: NodeHandler = ({ items, node, log }) => {
+const codeHandler: NodeHandler = async ({ items, node, log }) => {
   const code = String(node.config?.code ?? "return items;");
-  // eslint-disable-next-line no-new-func
-  const fn = new Function("items", "$json", `"use strict";\n${code}`);
-  const result = fn(
+  // Run as an async function so author code may `await`, and any rejection
+  // surfaces to the engine's try/catch instead of becoming an unhandled
+  // rejection after the node was already logged.
+  const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as FunctionConstructor;
+  const fn = new AsyncFunction("items", "$json", `"use strict";\n${code}`);
+  const result = await fn(
     items.map((i) => i.json),
     items[0]?.json ?? {},
   );
@@ -108,19 +111,26 @@ const httpHandler: NodeHandler = async ({ items, getParam, log }) => {
     log(`${method} ${url}`);
     if (!url) throw new Error("HTTP node: URL is empty");
     const hasBody = method !== "GET" && method !== "HEAD" && bodyRaw !== undefined && bodyRaw !== "";
-    const res = await fetch(url, {
-      method,
-      headers: hasBody ? { "content-type": "application/json" } : undefined,
-      body: hasBody ? (typeof bodyRaw === "string" ? bodyRaw : JSON.stringify(bodyRaw)) : undefined,
-    });
-    const text = await res.text();
-    let parsed: unknown = text;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000); // bound hung requests
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      /* keep as text */
+      const res = await fetch(url, {
+        method,
+        headers: hasBody ? { "content-type": "application/json" } : undefined,
+        body: hasBody ? (typeof bodyRaw === "string" ? bodyRaw : JSON.stringify(bodyRaw)) : undefined,
+        signal: controller.signal,
+      });
+      const text = await res.text();
+      let parsed: unknown = text;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        /* keep as text */
+      }
+      out.push({ json: { status: res.status, ok: res.ok, body: parsed } });
+    } finally {
+      clearTimeout(timer);
     }
-    out.push({ json: { status: res.status, ok: res.ok, body: parsed } });
   }
   return { items: out };
 };
