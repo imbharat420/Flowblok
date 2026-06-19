@@ -43,18 +43,30 @@ export default function WorkflowCanvasPage() {
       fetch(`/api/workflows/${id}`),
       fetch(`/api/workflows/node-types`).then((r) => r.json()),
     ]).then(async ([wfRes, t]) => {
+      setTypes(t.items);
       const found = wfRes.ok ? ((await wfRes.json()) as Workflow) : null;
-      // A freshly-created workflow (or an unknown id) has no server record yet —
-      // open an empty draft canvas instead of crashing. The display name is
-      // carried over from the workflows list via ?name=.
+      if (found && Array.isArray(found.nodes)) {
+        setWf(found);
+        return;
+      }
+      // Unknown / stale id (e.g. created in a previous server session that has
+      // since reset). Create a fresh PERSISTED workflow so Save/Test actually
+      // work, and adopt its id — instead of an unsaved client-only draft.
       const fallbackName =
         new URLSearchParams(window.location.search).get("name") ?? "Untitled workflow";
-      setWf(
-        found && Array.isArray(found.nodes)
-          ? found
-          : { id, name: fallbackName, status: "draft", nodes: [], connections: [], lastRun: null, runs: 0 },
-      );
-      setTypes(t.items);
+      const created = await fetch("/api/workflows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: fallbackName }),
+      })
+        .then((r) => (r.ok ? (r.json() as Promise<Workflow>) : null))
+        .catch(() => null);
+      if (created && Array.isArray(created.nodes)) {
+        setWf(created);
+        window.history.replaceState(null, "", `/workflows/${created.id}`);
+      } else {
+        setWf({ id, name: fallbackName, status: "draft", nodes: [], connections: [], lastRun: null, runs: 0 });
+      }
     });
   }, [id]);
 
@@ -213,7 +225,23 @@ export default function WorkflowCanvasPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payload: {} }),
       });
-      const result = (await res.json()) as WorkflowRun;
+      const result = (await res.json().catch(() => null)) as (WorkflowRun & { error?: string }) | null;
+      if (!res.ok || !result || !Array.isArray(result.nodeLogs)) {
+        const now = new Date().toISOString();
+        setLastRun({
+          id: "run_err",
+          workflowId: wf.id,
+          status: "error",
+          trigger: "manual",
+          startedAt: now,
+          finishedAt: now,
+          durationMs: 0,
+          nodeLogs: [],
+          error: result?.error ?? `Run failed (HTTP ${res.status})`,
+        });
+        setLogOpen(true);
+        return;
+      }
       setLastRun(result);
       setLogOpen(true);
       for (const nl of result.nodeLogs) {
@@ -536,7 +564,7 @@ export default function WorkflowCanvasPage() {
                 <p className="border-b border-err/30 bg-err/5 px-4 py-2 text-[12px] text-err">{lastRun.error}</p>
               )}
               <ul className="divide-y divide-border">
-                {lastRun.nodeLogs.map((nl) => (
+                {(lastRun.nodeLogs ?? []).map((nl) => (
                   <li key={nl.nodeId} className="px-4 py-2">
                     <div className="flex items-center gap-2 text-[12px]">
                       {nl.status === "success" ? (

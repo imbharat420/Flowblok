@@ -178,6 +178,62 @@ const SEED_WORKFLOWS: Workflow[] = [
     nodes: [{ id: "p1", type: "schedule", name: "Every Monday", x: 40, y: 140 }],
     connections: [],
   },
+
+  // ── Product example workflows (templates) ──────────────────────────────────
+  {
+    id: "wf_get_products",
+    name: "Get Products (scheduled)",
+    status: "draft",
+    lastRun: null,
+    runs: 0,
+    nodes: [
+      { id: "gp1", type: "schedule", name: "Daily 9am", x: 40, y: 160, config: { cron: "0 9 * * *", timezone: "UTC" } },
+      { id: "gp2", type: "http", name: "Fetch products", x: 300, y: 160, config: { method: "GET", url: "https://dummyjson.com/products?limit=10" } },
+      { id: "gp3", type: "code", name: "Extract titles", x: 560, y: 160, config: { code: "return (items[0].body.products || []).map(p => ({ id: p.id, title: p.title, price: p.price }));" } },
+    ],
+    connections: [
+      { id: "gpc1", from: "gp1", to: "gp2" },
+      { id: "gpc2", from: "gp2", to: "gp3" },
+    ],
+  },
+  {
+    id: "wf_list_products",
+    name: "List Products → Slack",
+    status: "active",
+    lastRun: null,
+    runs: 0,
+    nodes: [
+      { id: "lp1", type: "webhook", name: "On request", x: 40, y: 160, config: { path: "list-products", method: "GET" } },
+      { id: "lp2", type: "http", name: "Get products", x: 300, y: 160, config: { method: "GET", url: "https://dummyjson.com/products?limit=5" } },
+      { id: "lp3", type: "code", name: "Format", x: 560, y: 160, config: { code: "return (items[0].body.products || []).map(p => ({ name: p.title, price: p.price }));" } },
+      { id: "lp4", type: "slack", name: "Post to #catalog", x: 820, y: 160, config: { channel: "#catalog", message: "{{ $json.name }} — ${{ $json.price }}" } },
+    ],
+    connections: [
+      { id: "lpc1", from: "lp1", to: "lp2" },
+      { id: "lpc2", from: "lp2", to: "lp3" },
+      { id: "lpc3", from: "lp3", to: "lp4" },
+    ],
+  },
+  {
+    id: "wf_create_product",
+    name: "Create Product",
+    status: "draft",
+    lastRun: null,
+    runs: 0,
+    nodes: [
+      { id: "cp1", type: "webhook", name: "New product", x: 40, y: 180, config: { path: "create-product", method: "POST" } },
+      { id: "cp2", type: "if", name: "Missing name?", x: 300, y: 180, config: { left: "{{ $json.body.name }}", operator: "is empty", right: "" } },
+      { id: "cp3", type: "slack", name: "Reject", x: 560, y: 80, config: { channel: "#errors", message: "Product create rejected: no name" } },
+      { id: "cp4", type: "db_write", name: "Save product", x: 560, y: 280, config: { table: "products", operation: "insert" } },
+      { id: "cp5", type: "crm_lead", name: "Notify owner", x: 820, y: 280, config: { name: "{{ $json.body.name }}", email: "owner@shop.com", source: "product" } },
+    ],
+    connections: [
+      { id: "cpc1", from: "cp1", to: "cp2" },
+      { id: "cpc2", from: "cp2", to: "cp3", fromPort: "true" },
+      { id: "cpc3", from: "cp2", to: "cp4", fromPort: "false" },
+      { id: "cpc4", from: "cp4", to: "cp5" },
+    ],
+  },
 ];
 
 // Pin the mutable workflow list on globalThis. In Next.js dev, route-handler
