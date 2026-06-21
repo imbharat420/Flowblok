@@ -1,9 +1,11 @@
 import { Topbar } from "@/components/app-shell/topbar";
 import { workflowsService } from "@/server/workflows/workflows.service";
+import { getActiveSpaceId } from "@/server/spaces/active-space";
 import { WorkflowsClient } from "./workflows-client";
 
-export default function WorkflowsPage() {
-  const workflows = workflowsService.list();
+export default async function WorkflowsPage() {
+  const spaceId = (await getActiveSpaceId()) ?? "";
+  const workflows = await workflowsService.list(spaceId);
 
   return (
     <>

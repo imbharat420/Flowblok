@@ -18,11 +18,21 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-// Mock session for the visualization — you start as Owner (super admin).
-// The role switcher in the top bar lets you preview the app as any role.
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<Role>("owner");
-  const user: CurrentUser = { name: "Dharamraj N.", email: "dharamraj.nagar@dotsquares.com", role };
+// The current user is seeded from the real session (passed by the app layout).
+// The role switcher in the top bar still lets you preview the app as any role.
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: React.ReactNode;
+  initialUser?: { name: string; email: string; role: Role };
+}) {
+  const [role, setRole] = useState<Role>(initialUser?.role ?? "owner");
+  const user: CurrentUser = {
+    name: initialUser?.name ?? "Flowblok User",
+    email: initialUser?.email ?? "user@flowblok.dev",
+    role,
+  };
 
   // Mirror the active role into a cookie so server route handlers can enforce
   // capabilities (the 3-layer RBAC enforcement from 03-SECURITY-AND-ACCESS.md).

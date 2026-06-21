@@ -12,12 +12,13 @@ import { isPageType } from "./pages.types";
 export class PagesRepository {
   constructor(private readonly content: ContentRepository = contentRepository) {}
 
-  findAll(): Story[] {
-    return this.content.findAll().filter((s) => isPageType(s.contentType));
+  async findAllForSpace(spaceId: string): Promise<Story[]> {
+    const all = spaceId ? await this.content.findAllForSpace(spaceId) : [];
+    return all.filter((s) => isPageType(s.contentType));
   }
 
-  findById(id: string): Story | undefined {
-    const story = this.content.findById(id);
+  async findById(id: string): Promise<Story | undefined> {
+    const story = await this.content.findById(id);
     return story && isPageType(story.contentType) ? story : undefined;
   }
 }

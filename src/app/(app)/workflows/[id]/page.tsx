@@ -8,7 +8,7 @@ import { getIcon } from "@/lib/icon";
 import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
 import { SUB_PORTS, SUB_PORT_LABEL, SUB_NODE_PORT, isSubPort, type SubPort } from "@/lib/subnodes";
 import { visibleParams } from "@/lib/params";
-import { ChevronLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
 import { NodeDetailView } from "./node-detail-view";
 
 const NODE_W = 184;
@@ -19,7 +19,73 @@ const KIND_COLOR: Record<NodeKind, string> = {
   logic: "#f59e0b",
   action: "#2563eb",
   integration: "#a78bfa",
+  note: "#eab308",
 };
+
+// Sticky-note palette (translucent fill + matching border), keyed by the
+// node's config.color.
+const NOTE_COLORS: Record<string, { bg: string; border: string }> = {
+  yellow: { bg: "rgba(234,179,8,0.14)", border: "rgba(234,179,8,0.5)" },
+  blue: { bg: "rgba(37,99,235,0.14)", border: "rgba(37,99,235,0.5)" },
+  green: { bg: "rgba(34,197,94,0.14)", border: "rgba(34,197,94,0.5)" },
+  red: { bg: "rgba(248,113,113,0.14)", border: "rgba(248,113,113,0.5)" },
+  purple: { bg: "rgba(167,139,250,0.16)", border: "rgba(167,139,250,0.5)" },
+  gray: { bg: "rgba(148,148,148,0.14)", border: "rgba(148,148,148,0.5)" },
+};
+
+// Top-level categories of the add-node panel (mirrors n8n's "What happens
+// next?" menu). `cats` lists which node-type categories belong to each group.
+const PALETTE_GROUPS: Array<{ key: string; label: string; icon: string; desc: string; cats: string[] }> = [
+  { key: "ai", label: "AI", icon: "Bot", desc: "Build autonomous agents, summarize or search documents, etc.", cats: ["AI"] },
+  { key: "action", label: "Action in an app", icon: "Globe", desc: "Do something in an app or service like Google Sheets, Telegram or Notion", cats: ["Integrations", "Actions"] },
+  { key: "data", label: "Data transformation", icon: "Pencil", desc: "Manipulate, filter or convert data", cats: ["Data transformation"] },
+  { key: "flow", label: "Flow", icon: "GitBranch", desc: "Branch, merge or loop the flow, etc.", cats: ["Flow"] },
+  { key: "core", label: "Core", icon: "Box", desc: "Run code, make HTTP requests, set webhooks, etc.", cats: ["Core", "Notes"] },
+  { key: "human", label: "Human review", icon: "CircleCheck", desc: "Request approval via services like Slack and Telegram before making tool calls", cats: ["Human review"] },
+  { key: "trigger", label: "Add another trigger", icon: "Zap", desc: "Triggers start your workflow. Workflows can have multiple triggers.", cats: ["Triggers"] },
+];
+
+// Order of sub-group headings within a panel (n8n shows Popular first, Other
+// last). Unknown headings sort between, in catalog order.
+const SUBCAT_ORDER = [
+  "Popular", "Agents", "Models", "Chains", "Chat Models", "Memory", "Tools",
+  "For beginners", "Other memories", "Recommended Tools", "More tools",
+  "Add or remove items", "Combine items", "Convert data", "Miscellaneous",
+  "Other AI Nodes", "Other", "",
+];
+
+// Heading + intro for each AI Agent sub-port picker (mirrors n8n's panels).
+const SUB_PANEL: Record<SubPort, { title: string; banner: string }> = {
+  ai_model: {
+    title: "Language Models",
+    banner:
+      "Chat models are designed for interactive conversations and follow instructions well, while text completion models focus on generating continuations of a given text input",
+  },
+  ai_memory: { title: "Memory", banner: "Memory allows an AI model to remember and reference past interactions with it" },
+  ai_tool: { title: "Tools", banner: "Connect tools to let the agent take actions and fetch data." },
+};
+
+// Nodes shown in a group in addition to their primary category (n8n cross-lists
+// a few — e.g. Webhook / Wait / Execute Sub-workflow appear under Core too).
+const CROSS_LIST: Record<string, Array<{ type: string; sub: string }>> = {
+  core: [
+    { type: "webhook", sub: "Popular" },
+    { type: "execute_subworkflow", sub: "Other" },
+    { type: "wait", sub: "Other" },
+  ],
+};
+
+// Output ports for a node type. A single "main" port unless the type declares
+// named outputs (If => true/false, Switch => 0..3).
+function portsFor(t?: NodeType): Array<{ port: string; topPct: number; color: string }> {
+  const outs = t?.outputs;
+  if (!outs || outs.length <= 1) return [{ port: "main", topPct: 50, color: "rgba(255,255,255,0.55)" }];
+  return outs.map((p, i) => ({
+    port: p,
+    topPct: ((i + 1) / (outs.length + 1)) * 100,
+    color: p === "true" ? "#22c55e" : p === "false" ? "#f87171" : "#a3a3a3",
+  }));
+}
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -37,8 +103,14 @@ export default function WorkflowCanvasPage() {
   const [lastRun, setLastRun] = useState<WorkflowRun | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [ndvNode, setNdvNode] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
   const [creds, setCreds] = useState<Array<{ id: string; name: string; type: string }>>([]);
   const [palQuery, setPalQuery] = useState("");
+  const [palGroup, setPalGroup] = useState<string | null>(null);
+  const [palActions, setPalActions] = useState<string | null>(null);
+  // The AI Agent sub-port whose "+" picker is open (Chat Model / Memory / Tool).
+  const [subPicker, setSubPicker] = useState<{ agentId: string; port: SubPort } | null>(null);
+  const [subQuery, setSubQuery] = useState("");
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [linkPos, setLinkPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
@@ -222,12 +294,13 @@ export default function WorkflowCanvasPage() {
     });
   };
 
-  const addNode = (t: NodeType) => {
+  const addNode = (t: NodeType, overrides?: Record<string, unknown>) => {
     if (!wf) return;
     const config: Record<string, unknown> = {};
     (t.params ?? []).forEach((p) => {
       if (p.default !== undefined) config[p.key] = p.default;
     });
+    Object.assign(config, overrides ?? {});
     const node: WorkflowNode = {
       id: `n_${Date.now().toString(36)}`,
       type: t.type,
@@ -239,6 +312,54 @@ export default function WorkflowCanvasPage() {
     setWf({ ...wf, nodes: [...wf.nodes, node] });
     setSelected(node.id);
     setSelectedConn(null);
+    // collapse the add-node panel back to its top level (n8n closes it)
+    setPalGroup(null);
+    setPalActions(null);
+    setPalQuery("");
+  };
+
+  // Create a sub-node (Chat Model / Memory / Tool) and attach it to the AI
+  // Agent's matching sub-port — what the "+" under each port does in n8n.
+  const addSubNode = (agentId: string, port: SubPort, t: NodeType) => {
+    setWf((prev) => {
+      if (!prev) return prev;
+      const agent = prev.nodes.find((n) => n.id === agentId);
+      if (!agent) return prev;
+      const config: Record<string, unknown> = {};
+      (t.params ?? []).forEach((p) => {
+        if (p.default !== undefined) config[p.key] = p.default;
+      });
+      const idx = SUB_PORTS.indexOf(port);
+      const id = `n_${Date.now().toString(36)}`;
+      const node: WorkflowNode = {
+        id, type: t.type, name: t.label, config,
+        x: Math.max(0, agent.x + idx * 200 - 120),
+        y: agent.y + 180,
+      };
+      // Chat Model / Memory are single-slot — replace any existing attachment.
+      const base =
+        port === "ai_tool"
+          ? prev.connections
+          : prev.connections.filter((c) => !(c.to === agentId && c.toPort === port));
+      return {
+        ...prev,
+        nodes: [...prev.nodes, node],
+        connections: [...base, { id: `c_${Date.now().toString(36)}`, from: id, to: agentId, toPort: port }],
+      };
+    });
+    setSubPicker(null);
+    setSubQuery("");
+  };
+
+  // Click handler for a node row in the add-node panel: app integrations with
+  // multiple "actions" drill into a third level; everything else adds directly.
+  const pickNode = (t: NodeType) => {
+    const opts = t.actionParam ? (t.params?.find((p) => p.key === t.actionParam)?.options ?? []) : [];
+    if (t.actionParam && opts.length > 1) {
+      setPalActions(t.type);
+    } else {
+      addNode(t);
+    }
   };
 
   const setNodeField = (nodeId: string, patch: Partial<WorkflowNode>) => {
@@ -351,9 +472,62 @@ export default function WorkflowCanvasPage() {
   const selConn = wf.connections.find((c) => c.id === selectedConn) ?? null;
   const connectSrc = connectFrom ? wf.nodes.find((n) => n.id === connectFrom) : null;
   const q = palQuery.trim().toLowerCase();
-  const grouped = groupByCategory(
-    q ? types.filter((t) => `${t.label} ${t.category} ${t.description}`.toLowerCase().includes(q)) : types,
-  );
+  // Chat Model / Memory / Tool sub-nodes are added from the AI Agent's sub-port
+  // "+" picker (not the main panel), so they're excluded here.
+  const addable = types.filter((t) => !t.subPort);
+  const catGroup = (cat: string) => PALETTE_GROUPS.find((g) => g.cats.includes(cat))?.key;
+  const searchHits = q
+    ? addable.filter((t) => `${t.label} ${t.category} ${t.description}`.toLowerCase().includes(q))
+    : [];
+  const groupMeta = PALETTE_GROUPS.find((g) => g.key === palGroup);
+  const groupNodes = palGroup ? addable.filter((t) => catGroup(t.category) === palGroup) : [];
+  // Sub-group the chosen group's nodes (+ any cross-listed ones), ordered by
+  // SUBCAT_ORDER, for the second level of the panel.
+  const panelGroups: Array<[string, NodeType[]]> = (() => {
+    if (!palGroup) return [];
+    const entries: Array<{ t: NodeType; sub: string }> = groupNodes.map((t) => ({ t, sub: t.subcategory ?? "" }));
+    for (const x of CROSS_LIST[palGroup] ?? []) {
+      const t = typeOf(x.type);
+      if (t && !entries.some((e) => e.t.type === t.type)) entries.push({ t, sub: x.sub });
+    }
+    const m = new Map<string, NodeType[]>();
+    for (const e of entries) {
+      if (!m.has(e.sub)) m.set(e.sub, []);
+      m.get(e.sub)!.push(e.t);
+    }
+    const idx = (s: string) => {
+      const i = SUBCAT_ORDER.indexOf(s);
+      return i === -1 ? SUBCAT_ORDER.length - 1 : i;
+    };
+    return [...m.entries()].sort((a, b) => idx(a[0]) - idx(b[0]));
+  })();
+  const actionType = palActions ? typeOf(palActions) : null;
+  const actionOpts =
+    actionType?.actionParam
+      ? (actionType.params?.find((p) => p.key === actionType.actionParam)?.options ?? [])
+      : [];
+  const palBack = () => (palActions ? setPalActions(null) : setPalGroup(null));
+
+  // Sub-port picker: nodes for the open port (ai_model/ai_memory/ai_tool),
+  // filtered by its own search and grouped by subgroup.
+  const subPickerGroups: Array<[string, NodeType[]]> = (() => {
+    if (!subPicker) return [];
+    const sq = subQuery.trim().toLowerCase();
+    const items = types.filter(
+      (t) => t.subPort === subPicker.port && (!sq || `${t.label} ${t.description}`.toLowerCase().includes(sq)),
+    );
+    const m = new Map<string, NodeType[]>();
+    for (const t of items) {
+      const k = t.subcategory ?? "";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(t);
+    }
+    const idx = (s: string) => {
+      const i = SUBCAT_ORDER.indexOf(s);
+      return i === -1 ? SUBCAT_ORDER.length - 1 : i;
+    };
+    return [...m.entries()].sort((a, b) => idx(a[0]) - idx(b[0]));
+  })();
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -404,39 +578,105 @@ export default function WorkflowCanvasPage() {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {/* node palette */}
-        <div className="w-[220px] shrink-0 overflow-y-auto border-r border-border bg-surface px-2 py-3">
-          <p className="label-caps px-1.5 pb-2">Add node</p>
-          <input
-            value={palQuery}
-            onChange={(e) => setPalQuery(e.target.value)}
-            placeholder="Search nodes…"
-            className="mb-3 w-full rounded-md border border-border bg-bg px-2 py-1 text-[12px] text-fg outline-none focus:border-accent"
-          />
-          {grouped.length === 0 && <p className="px-1.5 text-[12px] text-fg-subtle">No nodes match.</p>}
-          {grouped.map(([cat, items]) => (
-            <div key={cat} className="mb-3">
-              <p className="px-1.5 pb-1 text-[11px] text-fg-subtle">{cat}</p>
-              {items.map((t) => {
-                const Icon = getIcon(t.icon);
+        {/* node palette — n8n-style drill-down ("What happens next?") */}
+        <div className="flex w-[320px] shrink-0 flex-col overflow-hidden border-r border-border bg-surface">
+          {/* header */}
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+            {!q && (palGroup || palActions) && (
+              <button onClick={palBack} className="text-fg-muted hover:text-fg" aria-label="Back">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
+            <span className="truncate text-[14px] font-semibold text-fg">
+              {q ? "Search" : palActions ? actionType?.label : palGroup ? groupMeta?.label : "What happens next?"}
+            </span>
+          </div>
+          {/* search */}
+          <div className="shrink-0 px-3 pt-3">
+            <input
+              value={palQuery}
+              onChange={(e) => setPalQuery(e.target.value)}
+              placeholder="Search nodes…"
+              className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[12px] text-fg outline-none focus:border-accent"
+            />
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
+            {q ? (
+              // flat search across every addable node
+              searchHits.length ? (
+                searchHits.map((t) => <PaletteNodeRow key={t.type} t={t} onClick={() => pickNode(t)} />)
+              ) : (
+                <p className="px-2 text-[12px] text-fg-subtle">No nodes match.</p>
+              )
+            ) : palActions && actionType ? (
+              // third level — an integration's actions
+              <>
+                <p className="px-2 pb-2 text-[12px] text-fg-muted">{actionType.description}</p>
+                <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-subtle">
+                  Actions ({actionOpts.length})
+                </p>
+                {actionOpts.map((op) => {
+                  const Icon = getIcon(actionType.icon);
+                  return (
+                    <button
+                      key={op}
+                      onClick={() => addNode(actionType, { [actionType.actionParam as string]: op })}
+                      className="mb-0.5 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-2"
+                    >
+                      <span
+                        className="grid h-7 w-7 shrink-0 place-items-center rounded"
+                        style={{ background: `${KIND_COLOR[actionType.kind]}22`, color: KIND_COLOR[actionType.kind] }}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="truncate text-[13px] text-fg">{op}</span>
+                    </button>
+                  );
+                })}
+              </>
+            ) : palGroup ? (
+              // second level — nodes in the chosen group, sub-grouped if defined
+              panelGroups.length ? (
+                panelGroups.map(([sub, items]) => (
+                  <div key={sub || "_"} className="mb-2">
+                    {sub && (
+                      <p className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-fg-subtle">{sub}</p>
+                    )}
+                    {items.map((t) => (
+                      <PaletteNodeRow key={t.type} t={t} onClick={() => pickNode(t)} />
+                    ))}
+                  </div>
+                ))
+              ) : (
+                <p className="px-2 text-[12px] text-fg-subtle">Nothing here yet.</p>
+              )
+            ) : (
+              // first level — top categories
+              PALETTE_GROUPS.map((g, i) => {
+                const Icon = getIcon(g.icon);
                 return (
                   <button
-                    key={t.type}
-                    onClick={() => addNode(t)}
-                    className="mb-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+                    key={g.key}
+                    onClick={() => setPalGroup(g.key)}
+                    className={cn(
+                      "flex w-full items-start gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-surface-2",
+                      i === PALETTE_GROUPS.length - 1 && "mt-1 border-t border-border pt-3",
+                    )}
                   >
-                    <span
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded"
-                      style={{ background: `${KIND_COLOR[t.kind]}22`, color: KIND_COLOR[t.kind] }}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center text-fg-muted">
+                      <Icon className="h-4 w-4" />
                     </span>
-                    <span className="truncate">{t.label}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-medium text-fg">{g.label}</span>
+                      <span className="mt-0.5 block text-[11px] leading-snug text-fg-subtle">{g.desc}</span>
+                    </span>
+                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-fg-subtle" />
                   </button>
                 );
-              })}
-            </div>
-          ))}
+              })
+            )}
+          </div>
         </div>
 
         {/* canvas */}
@@ -554,8 +794,52 @@ export default function WorkflowCanvasPage() {
               )}
             </svg>
 
+            {/* sticky notes — canvas annotations rendered behind the nodes */}
+            {wf.nodes
+              .filter((n) => n.type === "sticky_note")
+              .map((n) => {
+                const palette = NOTE_COLORS[String(n.config?.color ?? "yellow")] ?? NOTE_COLORS.yellow;
+                const editing = editingNote === n.id;
+                const content = String(n.config?.content ?? "");
+                return (
+                  <div
+                    key={n.id}
+                    onMouseDown={(e) => {
+                      if (editing) return;
+                      e.stopPropagation();
+                      startDrag(e, n);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setEditingNote(n.id);
+                    }}
+                    className={cn(
+                      "absolute select-none rounded-lg border p-3",
+                      selected === n.id ? "ring-1 ring-accent" : "",
+                      editing ? "cursor-text" : "cursor-grab active:cursor-grabbing",
+                    )}
+                    style={{ left: n.x, top: n.y, width: 240, minHeight: 150, background: palette.bg, borderColor: palette.border }}
+                  >
+                    {editing ? (
+                      <textarea
+                        autoFocus
+                        value={content}
+                        onChange={(e) => setNodeConfig(n.id, "content", e.target.value)}
+                        onBlur={() => setEditingNote(null)}
+                        className="h-[124px] w-full resize-none bg-transparent text-[12px] leading-relaxed text-fg outline-none"
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-fg">{content}</p>
+                    )}
+                  </div>
+                );
+              })}
+
             {/* nodes */}
-            {wf.nodes.map((n) => {
+            {wf.nodes
+              .filter((n) => n.type !== "sticky_note")
+              .map((n) => {
               const t = typeOf(n.type);
               const Icon = getIcon(t?.icon ?? "Box");
               const color = KIND_COLOR[t?.kind ?? "action"];
@@ -601,43 +885,66 @@ export default function WorkflowCanvasPage() {
                     </span>
                     {isDone && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ok" />}
                   </div>
-                  {/* output port(s) — drag to connect. If exposes true/false. */}
-                  {n.type === "if" ? (
-                    <>
-                      <span
-                        title="True branch"
-                        onMouseDown={(e) => startConnect(e, n, "true")}
-                        className="absolute -right-1.5 top-1/3 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-ok hover:brightness-125"
-                      />
-                      <span
-                        title="False branch"
-                        onMouseDown={(e) => startConnect(e, n, "false")}
-                        className="absolute -right-1.5 top-2/3 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-err hover:brightness-125"
-                      />
-                    </>
-                  ) : (
+                  {/* output port(s) — drag to connect. If/Switch expose named ports. */}
+                  {portsFor(t).map((p) => (
                     <span
-                      title="Drag to connect"
-                      onMouseDown={(e) => startConnect(e, n, "main")}
-                      className="absolute -right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] bg-[rgba(255,255,255,0.55)] hover:bg-accent"
+                      key={p.port}
+                      title={p.port === "main" ? "Drag to connect" : `${p.port} branch`}
+                      onMouseDown={(e) => startConnect(e, n, p.port)}
+                      style={{ top: `${p.topPct}%`, background: p.color }}
+                      className="absolute -right-1.5 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] hover:brightness-125"
                     />
-                  )}
+                  ))}
+                  {/* branch labels for multi-output nodes */}
+                  {(t?.outputs?.length ?? 0) > 1 &&
+                    portsFor(t).map((p) => (
+                      <span
+                        key={`lbl-${p.port}`}
+                        style={{ top: `${p.topPct}%` }}
+                        className="pointer-events-none absolute right-2 -translate-y-1/2 text-[9px] font-medium text-[#8a8a8a]"
+                      >
+                        {p.port}
+                      </span>
+                    ))}
                   {/* input port */}
                   <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full border border-[#0a0a0a] bg-[rgba(255,255,255,0.4)]" />
-                  {/* AI Agent sub-ports — drag onto a Chat Model / Memory / Tool sub-node */}
+                  {/* AI Agent sub-ports — drag the dot onto a sub-node, or click
+                      "+" to pick & attach one (Chat Model / Memory / Tool) */}
                   {n.type === "ai_agent" && (
                     <div className="absolute inset-x-0 top-full flex justify-around px-1 pt-2">
                       {SUB_PORTS.map((sp) => (
-                        <button
-                          key={sp}
-                          title={`Attach ${SUB_PORT_LABEL[sp]}`}
-                          onMouseDown={(e) => startSubConnect(e, n, sp)}
-                          className="flex flex-col items-center gap-0.5"
-                        >
-                          <span className="h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0a] bg-[#a78bfa] hover:brightness-125" />
-                          <span className="text-[9px] leading-none text-[#a78bfa]">{SUB_PORT_LABEL[sp]}</span>
-                        </button>
+                        <div key={sp} className="flex flex-col items-center gap-1">
+                          <button
+                            title={`Attach ${SUB_PORT_LABEL[sp]}`}
+                            onMouseDown={(e) => startSubConnect(e, n, sp)}
+                            className="cursor-crosshair"
+                          >
+                            <span className="block h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0a] bg-[#a78bfa] hover:brightness-125" />
+                          </button>
+                          <span className="text-[9px] leading-none text-[#a78bfa]">
+                            {SUB_PORT_LABEL[sp]}
+                            {sp === "ai_model" && <span className="text-err">*</span>}
+                          </span>
+                          <button
+                            title={`Add ${SUB_PORT_LABEL[sp]}`}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSubPicker({ agentId: n.id, port: sp });
+                              setSubQuery("");
+                            }}
+                            className="grid h-5 w-5 place-items-center rounded border border-[rgba(255,255,255,0.2)] bg-[#1a1a1a] text-[#8a8a8a] hover:border-accent hover:text-accent"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
                       ))}
+                    </div>
+                  )}
+                  {/* Display Note in Flow — show the node's note as a canvas label */}
+                  {Boolean(n.config?._displayNote) && Boolean(n.config?._notes) && n.type !== "ai_agent" && (
+                    <div className="pointer-events-none absolute left-0 top-full mt-1 max-w-[220px] rounded bg-[#3a2f0a] px-2 py-1 text-[10px] leading-snug text-[#e9d8a6]">
+                      {String(n.config?._notes)}
                     </div>
                   )}
                 </div>
@@ -814,6 +1121,58 @@ export default function WorkflowCanvasPage() {
             />
           );
         })()}
+
+      {/* AI Agent sub-port picker — right drawer (Language Models / Memory / Tools) */}
+      {subPicker && (
+        <div
+          className="fixed inset-0 z-[55] flex justify-end bg-black/40"
+          onClick={() => {
+            setSubPicker(null);
+            setSubQuery("");
+          }}
+        >
+          <div
+            className="flex h-full w-[380px] flex-col border-l border-border-strong bg-surface shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+              <span className="text-fg-muted">{(() => { const I = getIcon(subPicker.port === "ai_model" ? "Languages" : subPicker.port === "ai_memory" ? "Brain" : "Wrench"); return <I className="h-4 w-4" />; })()}</span>
+              <span className="text-[14px] font-semibold text-fg">{SUB_PANEL[subPicker.port].title}</span>
+              <div className="flex-1" />
+              <button onClick={() => { setSubPicker(null); setSubQuery(""); }} className="text-fg-muted hover:text-fg" aria-label="Close">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="shrink-0 px-4 pt-3">
+              <input
+                value={subQuery}
+                onChange={(e) => setSubQuery(e.target.value)}
+                placeholder="Search nodes…"
+                className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[12px] text-fg outline-none focus:border-accent"
+              />
+              <p className="mt-3 rounded-md border border-warn/30 bg-warn/5 px-3 py-2 text-[11px] leading-snug text-fg-muted">
+                {SUB_PANEL[subPicker.port].banner}
+              </p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
+              {subPickerGroups.length ? (
+                subPickerGroups.map(([sub, items]) => (
+                  <div key={sub || "_"} className="mb-2">
+                    {sub && (
+                      <p className="px-2 pb-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-fg-subtle">{sub}</p>
+                    )}
+                    {items.map((t) => (
+                      <PaletteNodeRow key={t.type} t={t} onClick={() => addSubNode(subPicker.agentId, subPicker.port, t)} />
+                    ))}
+                  </div>
+                ))
+              ) : (
+                <p className="px-2 text-[12px] text-fg-subtle">No nodes match.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -895,11 +1254,27 @@ function ParamField({
   );
 }
 
-function groupByCategory(types: NodeType[]): Array<[string, NodeType[]]> {
-  const map = new Map<string, NodeType[]>();
-  for (const t of types) {
-    if (!map.has(t.category)) map.set(t.category, []);
-    map.get(t.category)!.push(t);
-  }
-  return [...map.entries()];
+// A node row in the add-node panel: icon + label + description, with a chevron
+// for app integrations that drill into an actions sub-level.
+function PaletteNodeRow({ t, onClick }: { t: NodeType; onClick: () => void }) {
+  const Icon = getIcon(t.icon);
+  const hasActions = Boolean(t.actionParam && (t.params?.find((p) => p.key === t.actionParam)?.options?.length ?? 0) > 1);
+  return (
+    <button
+      onClick={onClick}
+      className="mb-0.5 flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-2"
+    >
+      <span
+        className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded"
+        style={{ background: `${KIND_COLOR[t.kind]}22`, color: KIND_COLOR[t.kind] }}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium text-fg">{t.label}</span>
+        <span className="mt-0.5 block text-[11px] leading-snug text-fg-subtle">{t.description}</span>
+      </span>
+      {hasActions && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-fg-subtle" />}
+    </button>
+  );
 }

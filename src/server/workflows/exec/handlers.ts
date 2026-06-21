@@ -161,6 +161,47 @@ const httpHandler: NodeHandler = async ({ items, getParam, log, getCredential })
   return { items: out };
 };
 
+const filterHandler: NodeHandler = ({ items, getParam, log }) => {
+  const kept = items.filter((item) =>
+    compare(getParam("left", item), String(getParam("operator", item) ?? "equals"), getParam("right", item)),
+  );
+  log(`${kept.length} of ${items.length} kept`);
+  return { items: kept };
+};
+
+const switchHandler: NodeHandler = ({ items, getParam, log }) => {
+  const ports = 4; // matches the node type's declared outputs ["0".."3"]
+  const branches: Record<string, ExecItem[]> = {};
+  for (let i = 0; i < ports; i++) branches[String(i)] = [];
+  for (const item of items) {
+    const raw = getParam("output", item);
+    let idx = Number(raw);
+    if (!Number.isFinite(idx)) idx = 0;
+    idx = Math.min(Math.max(0, Math.trunc(idx)), ports - 1);
+    branches[String(idx)].push(item);
+  }
+  log(Object.entries(branches).map(([p, b]) => `${p}:${b.length}`).join(" · "));
+  return { items: branches["0"], branches };
+};
+
+// Merge / passthrough-style nodes: the engine already concatenates items
+// arriving on multiple inbound edges into a node's input, so a passthrough
+// effectively merges those streams.
+const mergeHandler: NodeHandler = ({ items, log }) => {
+  log(`merged ${items.length} item(s)`);
+  return { items };
+};
+
+const stopErrorHandler: NodeHandler = ({ getParam, items }) => {
+  const type = String(getParam("errorType", items[0]) ?? "Error Message");
+  if (type === "Error Object") {
+    const raw = getParam("errorObject", items[0]);
+    const text = typeof raw === "string" ? raw : JSON.stringify(raw ?? {});
+    throw new Error(text || "Workflow stopped");
+  }
+  throw new Error(String(getParam("errorMessage", items[0]) ?? "An error occurred!"));
+};
+
 const waitHandler: NodeHandler = async ({ items, getParam, log }) => {
   const amount = Number(getParam("amount", items[0]) ?? 0);
   const unit = String(getParam("unit", items[0]) ?? "seconds");
@@ -172,10 +213,15 @@ const waitHandler: NodeHandler = async ({ items, getParam, log }) => {
 };
 
 registerHandler("if", ifHandler);
+registerHandler("filter", filterHandler);
+registerHandler("switch", switchHandler);
+registerHandler("merge", mergeHandler);
+registerHandler("stop_error", stopErrorHandler);
 registerHandler("code", codeHandler);
 registerHandler("http", httpHandler);
 registerHandler("wait", waitHandler);
 // triggers explicitly pass through (their items come from the run seed)
+registerHandler("manual_trigger", passthrough);
 registerHandler("webhook", passthrough);
 registerHandler("schedule", passthrough);
 registerHandler("form_submit", passthrough);

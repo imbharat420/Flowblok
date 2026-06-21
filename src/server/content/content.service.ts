@@ -1,72 +1,69 @@
-// Service layer — business logic: filtering, search, pagination, derived stats.
-// Knows nothing about HTTP. Pure, testable, reusable from API routes, RSC, or workflows.
+// Content service — space-scoped business logic (filter, search, paginate,
+// derived stats). HTTP-agnostic.
 
 import { ContentRepository, contentRepository } from "./content.repository";
-import type { Folder, ListQuery, Paginated, Story } from "@/lib/types";
+import type { Folder, ListQuery, Paginated, Story, StoryVersion, UpdateStoryInput } from "@/lib/types";
 
 export class ContentService {
   constructor(private readonly repo: ContentRepository = contentRepository) {}
 
-  list(query: ListQuery = {}): Paginated<Story> {
+  async list(spaceId: string, query: ListQuery = {}): Promise<Paginated<Story>> {
     const page = Math.max(1, query.page ?? 1);
     const perPage = Math.min(100, Math.max(1, query.perPage ?? 25));
 
-    let items = this.repo.findAll();
-
+    let items = spaceId ? await this.repo.findAllForSpace(spaceId) : [];
     if (query.search) {
       const q = query.search.toLowerCase();
-      items = items.filter(
-        (s) => s.name.toLowerCase().includes(q) || s.slug.toLowerCase().includes(q),
-      );
+      items = items.filter((s) => s.name.toLowerCase().includes(q) || s.slug.toLowerCase().includes(q));
     }
     if (query.status) items = items.filter((s) => s.status === query.status);
     if (query.contentType) items = items.filter((s) => s.contentType === query.contentType);
-
-    items = [...items].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
     const total = items.length;
     const start = (page - 1) * perPage;
     return { items: items.slice(start, start + perPage), total, page, perPage };
   }
 
-  getById(id: string): Story | null {
-    return this.repo.findById(id) ?? null;
+  async getById(id: string): Promise<Story | null> {
+    return (await this.repo.findById(id)) ?? null;
   }
 
-  update(id: string, input: import("@/lib/types").UpdateStoryInput): Story | null {
-    return this.repo.update(id, input) ?? null;
+  async update(id: string, input: UpdateStoryInput): Promise<Story | null> {
+    return (await this.repo.update(id, input)) ?? null;
   }
 
-  create(input: { name: string; contentType?: string }): Story {
-    return this.repo.create(input);
+  async create(spaceId: string, input: { name: string; contentType?: string }): Promise<Story> {
+    return this.repo.create(spaceId, input);
   }
 
-  remove(id: string): Story | null {
-    return this.repo.remove(id) ?? null;
+  async remove(id: string): Promise<Story | null> {
+    return (await this.repo.remove(id)) ?? null;
   }
 
-  versions(id: string): import("@/lib/types").StoryVersion[] {
+  async versions(id: string): Promise<StoryVersion[]> {
     return this.repo.listVersions(id);
   }
 
-  restore(id: string, versionId: string): Story | null {
-    return this.repo.restore(id, versionId) ?? null;
+  async restore(id: string, versionId: string): Promise<Story | null> {
+    return (await this.repo.restore(id, versionId)) ?? null;
   }
 
-  folders(): Folder[] {
-    return this.repo.listFolders();
+  async folders(spaceId: string): Promise<Folder[]> {
+    return spaceId ? this.repo.listFoldersForSpace(spaceId) : [];
   }
 
-  /** counts by status — feeds the dashboard pipeline widget */
-  statusBreakdown(): Record<string, number> {
-    return this.repo.findAll().reduce<Record<string, number>>((acc, s) => {
+  /** counts by status for a space — feeds the dashboard pipeline widget */
+  async statusBreakdown(spaceId: string): Promise<Record<string, number>> {
+    const all = spaceId ? await this.repo.findAllForSpace(spaceId) : [];
+    return all.reduce<Record<string, number>>((acc, s) => {
       acc[s.status] = (acc[s.status] ?? 0) + 1;
       return acc;
     }, {});
   }
 
-  contentTypes(): string[] {
-    return [...new Set(this.repo.findAll().map((s) => s.contentType))].sort();
+  async contentTypes(spaceId: string): Promise<string[]> {
+    const all = spaceId ? await this.repo.findAllForSpace(spaceId) : [];
+    return [...new Set(all.map((s) => s.contentType))].sort();
   }
 }
 

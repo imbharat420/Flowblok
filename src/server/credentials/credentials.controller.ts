@@ -3,6 +3,7 @@
 // return masked data; the raw plaintext only ever lives in the repository.
 
 import { CredentialsService, credentialsService } from "./credentials.service";
+import { getActiveSpaceId } from "@/server/spaces/active-space";
 import type { ApiResult } from "@/server/content/content.controller";
 import type {
   Credential,
@@ -44,19 +45,21 @@ export class CredentialsController {
   constructor(private readonly service: CredentialsService = credentialsService) {}
 
   // GET /api/credentials
-  list(): ApiResult {
-    return { status: 200, body: { items: this.service.list().map(maskCredential) } };
+  async list(): Promise<ApiResult> {
+    const spaceId = (await getActiveSpaceId()) ?? "";
+    const items = await this.service.list(spaceId);
+    return { status: 200, body: { items: items.map(maskCredential) } };
   }
 
   // GET /api/credentials/:id
-  getById(id: string): ApiResult {
-    const cred = this.service.get(id);
+  async getById(id: string): Promise<ApiResult> {
+    const cred = await this.service.get(id);
     if (!cred) return { status: 404, body: { error: "Credential not found", id } };
     return { status: 200, body: maskCredential(cred) };
   }
 
   // POST /api/credentials
-  create(body: unknown): ApiResult {
+  async create(body: unknown): Promise<ApiResult> {
     if (!body || typeof body !== "object") return { status: 400, body: { error: "Invalid body" } };
     const { name, type, data } = body as Record<string, unknown>;
 
@@ -75,11 +78,12 @@ export class CredentialsController {
       type: type as CredentialType,
       data,
     };
-    return { status: 201, body: maskCredential(this.service.create(input)) };
+    const spaceId = await getActiveSpaceId();
+    return { status: 201, body: maskCredential(await this.service.create(input, spaceId)) };
   }
 
   // PUT /api/credentials/:id
-  update(id: string, body: unknown): ApiResult {
+  async update(id: string, body: unknown): Promise<ApiResult> {
     if (!body || typeof body !== "object") return { status: 400, body: { error: "Invalid body" } };
     const b = body as Record<string, unknown>;
     const patch: UpdateCredentialInput = {};
@@ -103,14 +107,14 @@ export class CredentialsController {
       patch.data = b.data;
     }
 
-    const updated = this.service.update(id, patch);
+    const updated = await this.service.update(id, patch);
     if (!updated) return { status: 404, body: { error: "Credential not found", id } };
     return { status: 200, body: maskCredential(updated) };
   }
 
   // DELETE /api/credentials/:id
-  remove(id: string): ApiResult {
-    const removed = this.service.remove(id);
+  async remove(id: string): Promise<ApiResult> {
+    const removed = await this.service.remove(id);
     if (!removed) return { status: 404, body: { error: "Credential not found", id } };
     return { status: 200, body: { ok: true, id } };
   }

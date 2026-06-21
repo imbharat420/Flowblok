@@ -36,7 +36,7 @@ export function NodeDetailView({
   const Icon = getIcon(nodeType?.icon ?? "Box");
   const params = visibleParams(nodeType?.params, node.config);
   const notes = String(node.config?._notes ?? "");
-  const continueOnFail = Boolean(node.config?._continueOnFail);
+  const cfg = node.config ?? {};
 
   return (
     <div className="fixed inset-0 z-[60] flex bg-black/60" onClick={onClose}>
@@ -106,8 +106,38 @@ export function NodeDetailView({
                   <p className="text-[12px] text-fg-muted">This node has no parameters.</p>
                 )
               ) : (
-                <div className="space-y-4">
-                  <label className="block">
+                <div className="space-y-1">
+                  <Toggle
+                    label="Always Output Data"
+                    hint="Output an empty item if the node returns no data, so the flow continues."
+                    checked={Boolean(cfg._alwaysOutputData)}
+                    onChange={(v) => onChangeConfig("_alwaysOutputData", v)}
+                  />
+                  <Toggle
+                    label="Execute Once"
+                    hint="Run this node only once, with the first input item, instead of per item."
+                    checked={Boolean(cfg._executeOnce)}
+                    onChange={(v) => onChangeConfig("_executeOnce", v)}
+                  />
+                  <Toggle
+                    label="Retry On Fail"
+                    hint="Automatically retry this node a few times before failing."
+                    checked={Boolean(cfg._retryOnFail)}
+                    onChange={(v) => onChangeConfig("_retryOnFail", v)}
+                  />
+                  <label className="block pt-3">
+                    <span className="mb-1 block text-[12px] text-fg-muted">On Error</span>
+                    <select
+                      value={String(cfg._onError ?? "Stop Workflow")}
+                      onChange={(e) => onChangeConfig("_onError", e.target.value)}
+                      className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent"
+                    >
+                      <option>Stop Workflow</option>
+                      <option>Continue</option>
+                      <option>Continue (using error output)</option>
+                    </select>
+                  </label>
+                  <label className="block pt-3">
                     <span className="mb-1 block text-[12px] text-fg-muted">Notes</span>
                     <textarea
                       rows={4}
@@ -117,20 +147,12 @@ export function NodeDetailView({
                       className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent"
                     />
                   </label>
-                  <label className="flex items-start gap-2 text-[13px] text-fg">
-                    <input
-                      type="checkbox"
-                      checked={continueOnFail}
-                      onChange={(e) => onChangeConfig("_continueOnFail", e.target.checked)}
-                      className="mt-0.5 h-4 w-4 accent-accent"
-                    />
-                    <span>
-                      Continue on fail
-                      <span className="mt-0.5 block text-[11px] text-fg-subtle">
-                        Keep running the workflow even if this node errors.
-                      </span>
-                    </span>
-                  </label>
+                  <Toggle
+                    label="Display Note in Flow?"
+                    hint="Show this note as a label under the node on the canvas."
+                    checked={Boolean(cfg._displayNote)}
+                    onChange={(v) => onChangeConfig("_displayNote", v)}
+                  />
                 </div>
               )}
             </div>
@@ -146,6 +168,45 @@ export function NodeDetailView({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+// n8n-style labelled toggle switch used in the Settings tab.
+function Toggle({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 py-2">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          "mt-0.5 inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors",
+          checked ? "bg-accent" : "bg-surface-3",
+        )}
+      >
+        <span
+          className={cn(
+            "inline-block h-3 w-3 rounded-full bg-white transition-transform",
+            checked ? "translate-x-3.5" : "translate-x-0.5",
+          )}
+        />
+      </button>
+      <span className="text-[13px] text-fg">
+        {label}
+        {hint && <span className="mt-0.5 block text-[11px] text-fg-subtle">{hint}</span>}
+      </span>
     </div>
   );
 }

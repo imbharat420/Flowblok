@@ -26,10 +26,10 @@ const KIND_ICON = {
   deploy: Rocket,
 } as const;
 
-export default function DashboardPage() {
-  const space = spaceService.get();
+export default async function DashboardPage() {
+  const space = await spaceService.get();
   const activity = spaceService.recentActivity();
-  const breakdown = contentService.statusBreakdown();
+  const breakdown = await contentService.statusBreakdown(space.id);
   const c = space.counts;
 
   const total = (breakdown.draft ?? 0) + (breakdown.review ?? 0) + (breakdown.published ?? 0);
@@ -55,9 +55,9 @@ export default function DashboardPage() {
 
           {/* KPI row */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <KpiCard label="Pages" value={c.pages} icon={FileText} delta={{ value: "+6 this week", positive: true }} />
+            <KpiCard label="Pages" value={c.pages} icon={FileText} />
             <KpiCard label="Collections" value={c.collections} icon={Database} />
-            <KpiCard label="Workflows" value={c.workflows} icon={Workflow} delta={{ value: "+3", positive: true }} />
+            <KpiCard label="Workflows" value={c.workflows} icon={Workflow} />
             <KpiCard label="APIs" value={c.apis} icon={Webhook} />
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">

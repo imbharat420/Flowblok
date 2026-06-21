@@ -9,7 +9,7 @@ import type { ExecItem, RunTrigger, NodeRunLog, Workflow, WorkflowNode, Workflow
 import { isSubNode, isSubPort, SUB_NODE_PORT } from "@/lib/subnodes";
 import { resolveValue } from "./expressions";
 import { getHandler, type SubNodes } from "./handlers";
-import { saveRun } from "./runs";
+import { saveRun, finalizeRun } from "./runs";
 import { workflowsRepository } from "../workflows.repository";
 import { credentialsService } from "@/server/credentials/credentials.service";
 import "./register"; // ensure all handlers are registered
@@ -38,14 +38,28 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
     durationMs: 0,
     nodeLogs: [],
   };
-  saveRun(run);
+  await saveRun(run);
 
+  try {
   const nowIso = startedAt.toISOString();
   // Independent copies so node mutations never alias the shared trigger payload.
   const vars = safeClone(opts.payload ?? {});
   const seedItems: ExecItem[] = [{ json: safeClone(opts.payload ?? {}) }];
 
   const nodesById = new Map(wf.nodes.map((n) => [n.id, n]));
+
+  // Preload only the credentials this workflow references, so handlers can
+  // resolve secrets synchronously without scanning/decrypting every stored
+  // credential on each run.
+  const credIds = [
+    ...new Set(
+      wf.nodes
+        .map((n) => n.config?.credential)
+        .filter((c): c is string => typeof c === "string" && c.length > 0),
+    ),
+  ];
+  const usedCreds = await credentialsService.getByIds(credIds);
+  const credMap = new Map(usedCreds.map((c) => [c.id, c.data]));
 
   // Sub-nodes (Chat Model / Memory / Tool) attach to a parent via a sub-port
   // connection (toPort = ai_*). They are NOT part of the main data flow: they
@@ -70,8 +84,9 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
     subNodesByParent.set(c.to, slot);
   }
 
-  // Flow nodes = everything that isn't an attached sub-node type.
-  const flowNodes = wf.nodes.filter((n) => !isSubNode(n.type));
+  // Flow nodes = everything that isn't an attached sub-node type or a sticky
+  // note (notes are canvas annotations and never execute).
+  const flowNodes = wf.nodes.filter((n) => !isSubNode(n.type) && n.type !== "sticky_note");
   const isFlow = new Set(flowNodes.map((n) => n.id));
 
   const outgoing = new Map<string, Array<{ to: string; fromPort: string }>>();
@@ -166,7 +181,7 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
         now: nowIso,
         vars,
         subNodes: subNodesByParent.get(nodeId) ?? { tools: [] },
-        getCredential: (cid: string) => credentialsService.get(cid)?.data,
+        getCredential: (cid: string) => credMap.get(cid),
         getParam: (key, item) =>
           resolveValue(node.config?.[key], { item: item ?? input[0] ?? { json: {} }, now: nowIso, vars }),
         log: (m) => messages.push(m),
@@ -189,8 +204,12 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
       log.status = "error";
       log.error = (err as Error).message;
       run.error = `${node.name}: ${(err as Error).message}`;
-      // "Continue on fail" (set in the node's Settings) keeps the run going.
-      if (!node.config?._continueOnFail) failed = true;
+      // The node's "On Error" setting decides whether the run stops. "Continue"
+      // / "Continue (using error output)" keep going; "Stop Workflow" (default)
+      // halts. The legacy "Continue on fail" checkbox is still honored.
+      const onError = String(node.config?._onError ?? "");
+      const keepGoing = node.config?._continueOnFail || onError.startsWith("Continue");
+      if (!keepGoing) failed = true;
     }
     log.finishedAt = new Date().toISOString();
     run.nodeLogs.push(log);
@@ -199,22 +218,29 @@ export async function executeWorkflow(wf: Workflow, opts: RunOptions): Promise<W
   run.status = failed ? "error" : "success";
   run.finishedAt = new Date().toISOString();
   run.durationMs = Date.parse(run.finishedAt) - startedAt.getTime();
+  } catch (err) {
+    // An error outside the per-node loop (e.g. credential load) must still
+    // finalize the run instead of leaving it stuck in "running".
+    run.status = "error";
+    run.error = run.error ?? (err as Error).message;
+    run.finishedAt = run.finishedAt ?? new Date().toISOString();
+    run.durationMs = Date.parse(run.finishedAt) - startedAt.getTime();
+  }
 
-  // Reflect the run on the workflow record (run count + last run time).
-  bumpWorkflowStats(wf.id, run);
+  // Persist the final run state, then reflect it on the workflow record.
+  await finalizeRun(run).catch((e) => console.error("[engine] finalizeRun failed:", e));
+  await workflowsRepository.bumpStats(wf.id, run.finishedAt).catch(() => {});
 
   return run;
 }
 
-function bumpWorkflowStats(workflowId: string, run: WorkflowRun): void {
-  const wf = workflowsRepository.findById(workflowId);
-  if (!wf) return;
-  wf.runs += 1;
-  wf.lastRun = run.finishedAt;
-}
+const TRIGGER_TYPES = new Set([
+  "manual_trigger", "webhook", "schedule", "form_submit",
+  "app_event_trigger", "workflow_trigger", "chat_trigger", "eval_trigger",
+]);
 
 function isTrigger(node: WorkflowNode): boolean {
-  return node.type === "webhook" || node.type === "schedule" || node.type === "form_submit";
+  return TRIGGER_TYPES.has(node.type);
 }
 
 function capItems(items: ExecItem[]): ExecItem[] {

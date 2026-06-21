@@ -12,24 +12,28 @@ import type {
 export class CredentialsService {
   constructor(private readonly repo: CredentialsRepository = credentialsRepository) {}
 
-  list(): Credential[] {
-    return [...this.repo.findAll()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async list(spaceId: string): Promise<Credential[]> {
+    return spaceId ? this.repo.findAllForSpace(spaceId) : [];
   }
 
-  get(id: string): Credential | null {
-    return this.repo.findById(id) ?? null;
+  async get(id: string): Promise<Credential | null> {
+    return (await this.repo.findById(id)) ?? null;
   }
 
-  create(input: CreateCredentialInput): Credential {
-    return this.repo.create(input);
+  async getByIds(ids: string[]): Promise<Credential[]> {
+    return this.repo.findByIds(ids);
   }
 
-  update(id: string, input: UpdateCredentialInput): Credential | null {
-    return this.repo.update(id, input) ?? null;
+  async create(input: CreateCredentialInput, spaceId?: string | null): Promise<Credential> {
+    return this.repo.create(input, spaceId);
   }
 
-  remove(id: string): Credential | null {
-    return this.repo.remove(id) ?? null;
+  async update(id: string, input: UpdateCredentialInput): Promise<Credential | null> {
+    return (await this.repo.update(id, input)) ?? null;
+  }
+
+  async remove(id: string): Promise<Credential | null> {
+    return (await this.repo.remove(id)) ?? null;
   }
 }
 

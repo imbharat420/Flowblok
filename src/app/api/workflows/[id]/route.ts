@@ -5,7 +5,7 @@ import { requireCapability } from "@/server/guard";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const r = workflowsController.getById(id);
+  const r = await workflowsController.getById(id);
   return NextResponse.json(r.body, { status: r.status });
 }
 
@@ -14,7 +14,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
   const { id } = await ctx.params;
   const body = await req.json().catch(() => null);
-  const r = workflowsController.update(id, body);
+  const r = await workflowsController.update(id, body);
   return NextResponse.json(r.body, { status: r.status });
 }
 
@@ -22,6 +22,6 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   const gate = await requireCapability("manage_workflows");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
   const { id } = await ctx.params;
-  const r = workflowsController.remove(id);
+  const r = await workflowsController.remove(id);
   return NextResponse.json(r.body, { status: r.status });
 }

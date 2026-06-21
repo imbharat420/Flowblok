@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
-import { Workflow as WorkflowIcon, Play, Plus } from "lucide-react";
+import { Workflow as WorkflowIcon, Play, Plus, Sparkles, Loader2 } from "lucide-react";
 import { PromptModal } from "@/components/ui/prompt-modal";
 import type { WorkflowStatus } from "@/lib/types";
+
+interface Preset {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+}
 
 const STATUS_STYLE: Record<WorkflowStatus, { dot: string; text: string; label: string }> = {
   active: { dot: "bg-ok", text: "text-ok", label: "Active" },
@@ -27,6 +34,32 @@ export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
   const router = useRouter();
   const [workflows, setWorkflows] = useState<WorkflowItem[]>(initial);
   const [createOpen, setCreateOpen] = useState(false);
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [usingPreset, setUsingPreset] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/workflows/presets")
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d: { items?: Preset[] }) => setPresets(d.items ?? []))
+      .catch(() => {});
+  }, []);
+
+  // Instantiate a preset template as a new draft workflow, then open it.
+  const useTemplate = async (preset: Preset) => {
+    if (usingPreset) return;
+    setUsingPreset(preset.id);
+    const res = await fetch("/api/workflows/presets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ presetId: preset.id }),
+    });
+    if (!res.ok) {
+      setUsingPreset(null);
+      return;
+    }
+    const wf = (await res.json()) as { id: string };
+    router.push(`/workflows/${wf.id}`);
+  };
 
   // Persist the new workflow, then open its builder. The detail page loads it
   // back from the API, so it survives reloads (no more client-only drafts).
@@ -97,6 +130,48 @@ export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
           );
         })}
       </div>
+
+      {presets.length > 0 && (
+        <div className="mt-10">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-accent" />
+            <h2 className="text-[15px] font-semibold text-fg">Start from a template</h2>
+            <span className="text-[12px] text-fg-subtle">· {presets.length} presets</span>
+          </div>
+          {[...new Set(presets.map((p) => p.category))].map((cat) => (
+            <div key={cat} className="mb-6">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-fg-subtle">{cat}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {presets
+                  .filter((p) => p.category === cat)
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => useTemplate(p)}
+                      disabled={usingPreset !== null}
+                      className="group flex flex-col rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:border-border-strong disabled:opacity-60"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="grid h-8 w-8 place-items-center rounded-md bg-surface-2 text-fg-muted group-hover:text-accent">
+                          {usingPreset === p.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <WorkflowIcon className="h-4 w-4" />
+                          )}
+                        </span>
+                        <span className="text-[11px] font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
+                          Use template →
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[14px] font-medium text-fg">{p.name}</p>
+                      <p className="mt-1 text-[12px] leading-snug text-fg-muted">{p.description}</p>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {createOpen && (
         <PromptModal

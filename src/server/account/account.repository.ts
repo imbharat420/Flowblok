@@ -9,16 +9,18 @@ import type {
   TokenPermission,
 } from "./account.types";
 
+// Cleared of demo identity. (The signed-in account lives in Postgres; this
+// in-memory profile is a neutral placeholder for the account-settings screen.)
 const profile: AccountProfile = {
-  email: "dharamraj.nagar@dotsquares.com",
-  username: "dharamraj",
+  email: "",
+  username: "",
   showUsernameAsCollaborator: true,
-  firstName: "Dharamraj",
-  lastName: "Nagar",
+  firstName: "",
+  lastName: "",
   role: "developer",
   avatarColor: "#2563eb",
-  githubConnected: true,
-  githubEmail: "dharamraj.nagar@dotsquares.com",
+  githubConnected: false,
+  githubEmail: null,
 };
 
 const appearance: AppearanceSettings = { mode: "single", theme: "dark" };
@@ -26,16 +28,7 @@ const security: SecuritySettings = { twoFactor: false };
 const privacy: PrivacySettings = { telemetry: true };
 
 let tokenSeq = 0;
-const tokens: PersonalAccessToken[] = [
-  {
-    id: "pat_legacy",
-    name: "Test (legacy)",
-    maskedValue: "••••••••••p6gv",
-    expiresAt: "2027-01-04T00:00:00.000Z",
-    permission: "User Permission",
-    deprecated: true,
-  },
-];
+const tokens: PersonalAccessToken[] = [];
 
 function rand(n: number): string {
   let s = "";

@@ -15,8 +15,8 @@ function normalizePath(raw: unknown): string {
 }
 
 /** Find an active workflow + its matching webhook node for the given slug path. */
-function matchWebhook(path: string): { wf: Workflow; node: WorkflowNode } | null {
-  for (const wf of workflowsRepository.findAll()) {
+async function matchWebhook(path: string): Promise<{ wf: Workflow; node: WorkflowNode } | null> {
+  for (const wf of await workflowsRepository.findAll()) {
     if (wf.status !== "active") continue;
     for (const node of wf.nodes) {
       if (node.type !== "webhook") continue;
@@ -31,7 +31,7 @@ async function handle(req: Request, ctx: { params: Promise<{ slug: string[] }> }
     const { slug } = await ctx.params;
     const path = (slug ?? []).join("/").toLowerCase();
 
-    const match = matchWebhook(path);
+    const match = await matchWebhook(path);
     if (!match) {
       return NextResponse.json({ error: "No active webhook for path", path }, { status: 404 });
     }

@@ -1,9 +1,9 @@
-// Controller layer — maps HTTP concerns (query parsing, status codes, shapes)
-// to service calls. Mirrors the NestJS @Controller pattern in 02-TECHNICAL-ARCHITECTURE.md.
-// Next.js route handlers are thin adapters that delegate here.
+// Content controller — resolves the active space, parses HTTP, delegates to the
+// service. Next.js route handlers are thin adapters that delegate here.
 
 import { ContentService, contentService } from "./content.service";
-import type { ContentStatus, ListQuery } from "@/lib/types";
+import { getActiveSpaceId } from "@/server/spaces/active-space";
+import type { ContentStatus, ListQuery, UpdateStoryInput } from "@/lib/types";
 
 export interface ApiResult {
   status: number;
@@ -16,65 +16,53 @@ export class ContentController {
   constructor(private readonly service: ContentService = contentService) {}
 
   // GET /api/content
-  list(searchParams: URLSearchParams): ApiResult {
+  async list(searchParams: URLSearchParams): Promise<ApiResult> {
+    const spaceId = (await getActiveSpaceId()) ?? "";
     const statusParam = searchParams.get("status");
     const query: ListQuery = {
       search: searchParams.get("search") ?? undefined,
       contentType: searchParams.get("contentType") ?? undefined,
-      status: STATUSES.includes(statusParam as ContentStatus)
-        ? (statusParam as ContentStatus)
-        : undefined,
+      status: STATUSES.includes(statusParam as ContentStatus) ? (statusParam as ContentStatus) : undefined,
       page: numberParam(searchParams.get("page")),
       perPage: numberParam(searchParams.get("perPage")),
     };
-
-    const result = this.service.list(query);
-    return {
-      status: 200,
-      body: {
-        ...result,
-        meta: {
-          statusBreakdown: this.service.statusBreakdown(),
-          contentTypes: this.service.contentTypes(),
-          folders: this.service.folders(),
-        },
-      },
-    };
+    const result = await this.service.list(spaceId, query);
+    const [statusBreakdown, contentTypes, folders] = await Promise.all([
+      this.service.statusBreakdown(spaceId),
+      this.service.contentTypes(spaceId),
+      this.service.folders(spaceId),
+    ]);
+    return { status: 200, body: { ...result, meta: { statusBreakdown, contentTypes, folders } } };
   }
 
   // GET /api/content/:id
-  getById(id: string): ApiResult {
-    const story = this.service.getById(id);
+  async getById(id: string): Promise<ApiResult> {
+    const story = await this.service.getById(id);
     if (!story) return { status: 404, body: { error: "Story not found", id } };
     return { status: 200, body: story };
   }
 
   // PUT /api/content/:id
-  update(id: string, body: unknown): ApiResult {
-    if (!body || typeof body !== "object") {
-      return { status: 400, body: { error: "Invalid body" } };
-    }
+  async update(id: string, body: unknown): Promise<ApiResult> {
+    if (!body || typeof body !== "object") return { status: 400, body: { error: "Invalid body" } };
     const { name, status, content } = body as Record<string, unknown>;
-    const patch: import("@/lib/types").UpdateStoryInput = {};
+    const patch: UpdateStoryInput = {};
     if (typeof name === "string") patch.name = name;
     if (STATUSES.includes(status as ContentStatus)) patch.status = status as ContentStatus;
     if (content && typeof content === "object") patch.content = content as never;
-
-    const updated = this.service.update(id, patch);
+    const updated = await this.service.update(id, patch);
     if (!updated) return { status: 404, body: { error: "Story not found", id } };
     return { status: 200, body: updated };
   }
 
   // POST /api/content
-  create(body: unknown): ApiResult {
-    if (!body || typeof body !== "object") {
-      return { status: 400, body: { error: "Invalid body" } };
-    }
+  async create(body: unknown): Promise<ApiResult> {
+    if (!body || typeof body !== "object") return { status: 400, body: { error: "Invalid body" } };
+    const spaceId = await getActiveSpaceId();
+    if (!spaceId) return { status: 400, body: { error: "No active space — create or select a space first." } };
     const { name, contentType } = body as Record<string, unknown>;
-    if (typeof name !== "string" || !name.trim()) {
-      return { status: 400, body: { error: "Name is required" } };
-    }
-    const story = this.service.create({
+    if (typeof name !== "string" || !name.trim()) return { status: 400, body: { error: "Name is required" } };
+    const story = await this.service.create(spaceId, {
       name: name.trim(),
       contentType: typeof contentType === "string" ? contentType : undefined,
     });
@@ -82,23 +70,23 @@ export class ContentController {
   }
 
   // DELETE /api/content/:id
-  remove(id: string): ApiResult {
-    const removed = this.service.remove(id);
+  async remove(id: string): Promise<ApiResult> {
+    const removed = await this.service.remove(id);
     if (!removed) return { status: 404, body: { error: "Story not found", id } };
     return { status: 200, body: { ok: true, id } };
   }
 
   // GET /api/content/:id/versions
-  versions(id: string): ApiResult {
-    if (!this.service.getById(id)) return { status: 404, body: { error: "Story not found", id } };
-    return { status: 200, body: { items: this.service.versions(id) } };
+  async versions(id: string): Promise<ApiResult> {
+    if (!(await this.service.getById(id))) return { status: 404, body: { error: "Story not found", id } };
+    return { status: 200, body: { items: await this.service.versions(id) } };
   }
 
   // POST /api/content/:id/restore
-  restore(id: string, body: unknown): ApiResult {
+  async restore(id: string, body: unknown): Promise<ApiResult> {
     const versionId = (body as { versionId?: string })?.versionId;
     if (!versionId) return { status: 400, body: { error: "versionId is required" } };
-    const restored = this.service.restore(id, versionId);
+    const restored = await this.service.restore(id, versionId);
     if (!restored) return { status: 404, body: { error: "Story or version not found", id, versionId } };
     return { status: 200, body: restored };
   }

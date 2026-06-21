@@ -1,12 +1,14 @@
 // Workflow service — list, fetch, and node-type catalog. HTTP-agnostic.
-import { WorkflowsRepository, workflowsRepository } from "./workflows.repository";
+import { WorkflowsRepository, workflowsRepository, type WorkflowOwner } from "./workflows.repository";
+import type { WorkflowPreset } from "./presets";
 import type { CreateWorkflowInput, NodeType, UpdateWorkflowInput, Workflow } from "@/lib/types";
 
 export class WorkflowsService {
   constructor(private readonly repo: WorkflowsRepository = workflowsRepository) {}
 
-  list(): Array<Pick<Workflow, "id" | "name" | "status" | "lastRun" | "runs"> & { nodeCount: number }> {
-    return this.repo.findAll().map((w) => ({
+  async list(spaceId: string): Promise<Array<Pick<Workflow, "id" | "name" | "status" | "lastRun" | "runs"> & { nodeCount: number }>> {
+    const all = spaceId ? await this.repo.findAllForSpace(spaceId) : [];
+    return all.map((w) => ({
       id: w.id,
       name: w.name,
       status: w.status,
@@ -16,24 +18,32 @@ export class WorkflowsService {
     }));
   }
 
-  get(id: string): Workflow | null {
-    return this.repo.findById(id) ?? null;
+  async get(id: string): Promise<Workflow | null> {
+    return (await this.repo.findById(id)) ?? null;
   }
 
-  create(input: CreateWorkflowInput): Workflow {
-    return this.repo.create(input);
+  async create(input: CreateWorkflowInput, owner?: WorkflowOwner): Promise<Workflow> {
+    return this.repo.create(input, owner);
   }
 
-  update(id: string, patch: UpdateWorkflowInput): Workflow | null {
-    return this.repo.update(id, patch) ?? null;
+  async update(id: string, patch: UpdateWorkflowInput): Promise<Workflow | null> {
+    return (await this.repo.update(id, patch)) ?? null;
   }
 
-  remove(id: string): Workflow | null {
-    return this.repo.remove(id) ?? null;
+  async remove(id: string): Promise<Workflow | null> {
+    return (await this.repo.remove(id)) ?? null;
   }
 
   nodeTypes(): NodeType[] {
     return this.repo.nodeTypes();
+  }
+
+  presets(): WorkflowPreset[] {
+    return this.repo.presets();
+  }
+
+  async createFromPreset(presetId: string, name?: string, owner?: WorkflowOwner): Promise<Workflow | null> {
+    return (await this.repo.createFromPreset(presetId, name, owner)) ?? null;
   }
 }
 

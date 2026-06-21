@@ -10,23 +10,41 @@
 // would multiply on every reload. The global guard ensures exactly one interval
 // exists for the lifetime of the process.
 
+import { ne } from "drizzle-orm";
 import { cronMatches } from "./cron";
 import { executeWorkflow } from "./engine";
 import { workflowsRepository } from "../workflows.repository";
+import { getDb } from "@/server/db/client";
+import { schedulerState } from "@/server/db/schema";
 
 const DEFAULT_CRON = "0 9 * * *"; // 09:00 daily, matching the Schedule node default
 const TICK_MS = 30_000; // 30s — fine-grained enough to catch each minute once
 
 interface SchedulerState {
   interval?: ReturnType<typeof setInterval>;
-  // workflowId -> last yyyy-mm-dd-HH-mm minute key we fired for (dedupe guard).
-  lastFired: Map<string, string>;
 }
 
 const store = globalThis as unknown as { __flowblokScheduler?: SchedulerState };
 
 function getState(): SchedulerState {
-  return (store.__flowblokScheduler ??= { lastFired: new Map() });
+  return (store.__flowblokScheduler ??= {});
+}
+
+// Atomically claim the right to fire `workflowId` for clock-minute `key`. Uses
+// an upsert whose DO UPDATE only fires when the stored minute differs, so even
+// across multiple instances exactly one claim succeeds per minute (returns true).
+async function claimFire(workflowId: string, key: string): Promise<boolean> {
+  const db = await getDb();
+  const claimed = await db
+    .insert(schedulerState)
+    .values({ workflowId, lastFiredMinute: key })
+    .onConflictDoUpdate({
+      target: schedulerState.workflowId,
+      set: { lastFiredMinute: key },
+      setWhere: ne(schedulerState.lastFiredMinute, key),
+    })
+    .returning({ workflowId: schedulerState.workflowId });
+  return claimed.length > 0;
 }
 
 /** Build a stable per-minute key, e.g. "2026-06-19-09-00". */
@@ -36,13 +54,12 @@ function minuteKey(d: Date): string {
 }
 
 async function tick(): Promise<void> {
-  const state = getState();
   const now = new Date();
   const key = minuteKey(now);
 
   let workflows;
   try {
-    workflows = workflowsRepository.findAll();
+    workflows = await workflowsRepository.findAll();
   } catch (err) {
     console.error("[scheduler] failed to load workflows:", err);
     return;
@@ -59,9 +76,9 @@ async function tick(): Promise<void> {
       const cron = String(scheduleNode.config?.cron ?? DEFAULT_CRON) || DEFAULT_CRON;
       if (!cronMatches(cron, now)) continue;
 
-      // Only fire once per matching clock-minute, even though we tick twice a minute.
-      if (state.lastFired.get(wf.id) === key) continue;
-      state.lastFired.set(wf.id, key);
+      // Durably claim this clock-minute (survives restarts; one claim wins across
+      // instances) so we fire at most once per matching minute.
+      if (!(await claimFire(wf.id, key))) continue;
 
       console.log(`[scheduler] firing workflow ${wf.id} (cron "${cron}") at ${now.toISOString()}`);
       // Fire-and-track: await so a per-workflow failure is caught here, but a

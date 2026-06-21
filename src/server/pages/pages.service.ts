@@ -8,8 +8,8 @@ import type { PageRow, PagesListQuery, PagesListResult } from "./pages.types";
 export class PagesService {
   constructor(private readonly repo: PagesRepository = pagesRepository) {}
 
-  list(query: PagesListQuery = {}): PagesListResult {
-    let stories = this.repo.findAll();
+  async list(spaceId: string, query: PagesListQuery = {}): Promise<PagesListResult> {
+    let stories = await this.repo.findAllForSpace(spaceId);
 
     if (query.search) {
       const q = query.search.toLowerCase();
@@ -19,24 +19,21 @@ export class PagesService {
     }
     if (query.status) stories = stories.filter((s) => s.status === query.status);
 
+    const breakdown = stories.reduce<Record<string, number>>((acc, s) => {
+      acc[s.status] = (acc[s.status] ?? 0) + 1;
+      return acc;
+    }, {});
+
     const items: PageRow[] = stories
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map(toPageRow);
 
-    return { items, total: items.length, meta: { statusBreakdown: this.statusBreakdown() } };
+    return { items, total: items.length, meta: { statusBreakdown: breakdown } };
   }
 
-  getById(id: string): PageRow | null {
-    const story = this.repo.findById(id);
+  async getById(id: string): Promise<PageRow | null> {
+    const story = await this.repo.findById(id);
     return story ? toPageRow(story) : null;
-  }
-
-  /** counts by status across all pages */
-  statusBreakdown(): Record<string, number> {
-    return this.repo.findAll().reduce<Record<string, number>>((acc, s) => {
-      acc[s.status] = (acc[s.status] ?? 0) + 1;
-      return acc;
-    }, {});
   }
 }
 

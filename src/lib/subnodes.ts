@@ -14,14 +14,16 @@ export const SUB_PORT_LABEL: Record<SubPort, string> = {
   ai_tool: "Tool",
 };
 
+import { AI_SUB_PORT_BY_TYPE } from "./ai-catalog";
+
 // node type -> the sub-port it plugs into. The source of truth for "is this a
-// sub-node?" on both client and server.
+// sub-node?" on both client and server. The full provider/tool catalog lives in
+// ai-catalog.ts; the legacy entries below keep older saved workflows attaching.
 export const SUB_NODE_PORT: Record<string, SubPort> = {
+  // legacy aliases (pre-catalog node types)
   chat_model: "ai_model",
   memory: "ai_memory",
-  tool_http: "ai_tool",
-  tool_calculator: "ai_tool",
-  tool_code: "ai_tool",
+  ...(AI_SUB_PORT_BY_TYPE as Record<string, SubPort>),
 };
 
 export function isSubNode(type: string): boolean {

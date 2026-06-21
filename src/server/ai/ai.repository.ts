@@ -16,44 +16,8 @@ const STEP_PLAN: GenerationStep[] = [
   { key: "deploy", label: "Deploy", layer: "deploy" },
 ];
 
-const AGENTS: AiAgent[] = [
-  {
-    id: "designer",
-    name: "Designer",
-    description: "Composes layouts, theme tokens and infinite components from the brand brief.",
-    icon: "Palette",
-  },
-  {
-    id: "developer",
-    name: "Developer",
-    description: "Wires pages to typed APIs and the generated database schema.",
-    icon: "Code2",
-  },
-  {
-    id: "seo",
-    name: "SEO",
-    description: "Generates metadata, sitemaps and structured data for every route.",
-    icon: "Search",
-  },
-  {
-    id: "copywriter",
-    name: "Copywriter",
-    description: "Drafts on-brand copy for pages, components and email flows.",
-    icon: "PenLine",
-  },
-  {
-    id: "crm",
-    name: "CRM Agent",
-    description: "Builds lead pipelines, contact models and nurture workflows.",
-    icon: "Users",
-  },
-  {
-    id: "analytics",
-    name: "Analytics Agent",
-    description: "Instruments events and assembles dashboards from day one.",
-    icon: "BarChart3",
-  },
-];
+// Cleared: no demo agent roster.
+const AGENTS: AiAgent[] = [];
 
 export class AiRepository {
   /** Returns a fresh copy so callers can't mutate the seed template. */

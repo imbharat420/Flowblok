@@ -127,7 +127,7 @@ export interface UpdateStoryInput {
 
 // ----- Workflow engine (n8n / Boomi inspired) -----
 
-export type NodeKind = "trigger" | "logic" | "action" | "integration";
+export type NodeKind = "trigger" | "logic" | "action" | "integration" | "note";
 
 // A configurable field on a node type — rendered as a form control in the
 // builder's inspector and stored on WorkflowNode.config[key].
@@ -158,6 +158,15 @@ export interface NodeType {
   // Sub-node attach point. If set, this node is a SUB-NODE that plugs into a
   // parent (e.g. AI Agent) via that port rather than running in the main flow.
   subPort?: "ai_model" | "ai_memory" | "ai_tool";
+  // Named output ports for branching nodes. Undefined => a single "main" port.
+  // e.g. If => ["true","false"]; Switch => ["0","1","2","3"].
+  outputs?: string[];
+  // Sub-group heading within the add-node panel (e.g. Data transformation's
+  // "Popular" / "Convert data" sections). Undefined => no sub-heading.
+  subcategory?: string;
+  // For app integrations: the param key whose options are this node's "actions"
+  // (e.g. "operation"). Drives the third level of the add-node panel.
+  actionParam?: string;
 }
 
 export interface WorkflowNode {

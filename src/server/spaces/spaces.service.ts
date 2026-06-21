@@ -1,52 +1,48 @@
-// Service layer — business logic: sorting, derived stats. Knows nothing about
-// HTTP. Pure, testable, reusable from API routes, RSC, or workflows.
+// Spaces service — owner-scoped business logic (live/archived split, stats).
 
 import { SpacesRepository, spacesRepository } from "./spaces.repository";
 import type { CreateSpaceInput, Space, SpacesStats } from "./spaces.types";
 
 const isArchived = (s: Space) => !!s.archivedAt;
+const emptyStats: SpacesStats = { total: 0, active: 0, paused: 0, totalMembers: 0, plansInUse: 0 };
 
 export class SpacesService {
   constructor(private readonly repo: SpacesRepository = spacesRepository) {}
 
-  /** Live (non-archived) spaces, newest first. */
-  list(): Space[] {
-    return this.repo.findAll().filter((s) => !isArchived(s)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  async list(ownerId: string): Promise<Space[]> {
+    const all = await this.repo.findAllForOwner(ownerId);
+    return all.filter((s) => !isArchived(s)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  /** Archived spaces awaiting purge, soonest-to-purge first. */
-  listArchived(): Space[] {
-    return this.repo
-      .findAll()
-      .filter(isArchived)
-      .sort((a, b) => (a.purgeAt ?? "").localeCompare(b.purgeAt ?? ""));
+  async listArchived(ownerId: string): Promise<Space[]> {
+    const all = await this.repo.findAllForOwner(ownerId);
+    return all.filter(isArchived).sort((a, b) => (a.purgeAt ?? "").localeCompare(b.purgeAt ?? ""));
   }
 
-  getById(id: string): Space | null {
-    return this.repo.findById(id) ?? null;
+  async getById(id: string): Promise<Space | null> {
+    return (await this.repo.findById(id)) ?? null;
   }
 
-  create(input: CreateSpaceInput): Space {
-    return this.repo.create(input);
+  async create(ownerId: string, input: CreateSpaceInput): Promise<Space> {
+    return this.repo.create(ownerId, input);
   }
 
-  archive(id: string): Space | null {
-    return this.repo.archive(id) ?? null;
+  async archive(id: string): Promise<Space | null> {
+    return (await this.repo.archive(id)) ?? null;
   }
 
-  restore(id: string): Space | null {
-    return this.repo.restore(id) ?? null;
+  async restore(id: string): Promise<Space | null> {
+    return (await this.repo.restore(id)) ?? null;
   }
 
-  /** Headline figures for the KPI row (live spaces only). */
-  stats(): SpacesStats {
-    const all = this.list();
+  statsFor(live: Space[]): SpacesStats {
+    if (!live.length) return emptyStats;
     return {
-      total: all.length,
-      active: all.filter((s) => s.status === "active").length,
-      paused: all.filter((s) => s.status === "paused").length,
-      totalMembers: all.reduce((sum, s) => sum + s.members, 0),
-      plansInUse: new Set(all.map((s) => s.plan)).size,
+      total: live.length,
+      active: live.filter((s) => s.status === "active").length,
+      paused: live.filter((s) => s.status === "paused").length,
+      totalMembers: live.reduce((sum, s) => sum + s.members, 0),
+      plansInUse: new Set(live.map((s) => s.plan)).size,
     };
   }
 }

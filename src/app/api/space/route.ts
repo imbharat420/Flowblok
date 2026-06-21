@@ -2,9 +2,9 @@
 import { NextResponse } from "next/server";
 import { spaceService } from "@/server/space/space.service";
 
-export function GET() {
+export async function GET() {
   return NextResponse.json({
-    space: spaceService.get(),
+    space: await spaceService.get(),
     activity: spaceService.recentActivity(),
   });
 }

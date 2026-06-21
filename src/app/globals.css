@@ -144,3 +144,312 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+   Flowblok marketing site — "Editorial Tech" aesthetic
+   Scoped to .site so it never leaks into the product UI.
+   Fonts injected via next/font on the (site) layout:
+     --font-display (Bricolage Grotesque), --font-body (Hanken
+     Grotesk), --font-mono-site (JetBrains Mono).
+   ============================================================ */
+
+.site {
+  --ink: #f4f5f7;
+  --ink-dim: #9aa0aa;
+  --ink-faint: #5b606b;
+  --void: #060709;
+  --panel: #0c0e12;
+  --panel-2: #11141a;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+
+  /* signature accent ramp — cobalt → iris → cyan */
+  --a1: #3b6cff;
+  --a2: #7c5cff;
+  --a3: #22d3ee;
+  --glow: 59, 108, 255;
+
+  --grad-text: linear-gradient(100deg, #ffffff 0%, #cdd6ff 38%, #8fb6ff 70%, #6ee7ff 100%);
+  --grad-brand: linear-gradient(110deg, var(--a1), var(--a2) 55%, var(--a3));
+
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
+  letter-spacing: -0.011em;
+}
+
+.site ::selection {
+  background: rgba(124, 92, 255, 0.32);
+  color: #fff;
+}
+
+.font-display {
+  font-family: var(--font-display), "Hanken Grotesk", system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+.font-mono-site {
+  font-family: var(--font-mono-site), ui-monospace, monospace;
+}
+
+/* eyebrow / kicker label */
+.kicker {
+  font-family: var(--font-mono-site), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.text-grad {
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-brand {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* hairline grid + panel surfaces */
+.hairline {
+  border: 1px solid var(--line);
+}
+.panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
+/* ambient aura blob */
+.aura {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(80px);
+  opacity: 0.5;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(var(--glow), 0.55), transparent 70%);
+  animation: aura-drift 16s ease-in-out infinite alternate;
+}
+
+/* film grain overlay */
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 0.5s steps(3) infinite;
+}
+
+/* dotted blueprint backdrop */
+.blueprint {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 30%, transparent 75%);
+}
+
+/* scroll-reveal base — toggled by IntersectionObserver (.is-in) */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* magnetic / buttons */
+.btn-brand {
+  position: relative;
+  background: var(--grad-brand);
+  color: #fff;
+  border-radius: 999px;
+  box-shadow: 0 10px 40px -10px rgba(var(--glow), 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s;
+}
+.btn-brand:hover {
+  box-shadow: 0 16px 50px -8px rgba(var(--glow), 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.btn-ghost {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.25s, background 0.25s, transform 0.25s;
+}
+.btn-ghost:hover {
+  border-color: rgba(var(--glow), 0.6);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* x-ray hover card: grayscale → full color + spotlight on hover */
+.xray {
+  position: relative;
+  filter: grayscale(1) brightness(0.7);
+  transition: filter 0.5s ease;
+}
+.xray:hover {
+  filter: grayscale(0) brightness(1);
+}
+.xray::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.5s;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--glow), 0.18), transparent 60%);
+}
+.xray:hover::after {
+  opacity: 1;
+}
+
+/* spotlight border card */
+.spotlight {
+  position: relative;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--glow), 0.7), transparent 65%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.spotlight:hover::before {
+  opacity: 1;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee var(--marquee-dur, 36s) linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes aura-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(6%, -8%) scale(1.15); }
+}
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4%, 3%); }
+  40% { transform: translate(3%, -5%); }
+  60% { transform: translate(-2%, 4%); }
+  80% { transform: translate(5%, -2%); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(var(--glow), 0.5); }
+  70% { box-shadow: 0 0 0 12px rgba(var(--glow), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--glow), 0); }
+}
+
+/* on-load entrance (auth + client surfaces) */
+.fade-up {
+  animation: fade-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* form field */
+.field {
+  width: 100%;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  padding: 0.75rem 0.9rem;
+  font-size: 14px;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.field::placeholder { color: var(--ink-faint); }
+.field:focus {
+  outline: none;
+  border-color: rgba(124, 92, 255, 0.7);
+  box-shadow: 0 0 0 4px rgba(124, 92, 255, 0.12);
+}
+
+/* legal long-form */
+.legal-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.legal-prose strong { color: var(--ink); font-weight: 600; }
+.legal-prose a {
+  color: var(--a3);
+  text-underline-offset: 3px;
+}
+.legal-prose a:hover { text-decoration: underline; }
+
+/* custom cursor */
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 90;
+  pointer-events: none;
+  border-radius: 999px;
+  mix-blend-mode: difference;
+}
+.cursor-dot {
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  transform: translate(-50%, -50%);
+}
+.cursor-ring {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  transform: translate(-50%, -50%);
+  transition: width 0.25s, height 0.25s, background 0.25s, border-color 0.25s;
+}
+.cursor-ring.is-hot {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: transparent;
+}
+@media (hover: none) {
+  .cursor-dot, .cursor-ring { display: none; }
+}

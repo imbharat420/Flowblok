@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CommandPalette } from "./command-palette";
 import { useAuth } from "@/lib/auth-context";
+import { useSpaces } from "@/lib/space-context";
 import { ROLES, ROLE_LABEL, isSuperAdmin } from "@/lib/rbac";
 import { cn } from "@/lib/cn";
 
@@ -37,11 +38,8 @@ const CREATE_ITEMS = [
   { label: "New space", href: "/spaces", icon: Boxes },
 ] as const;
 
-const NOTIFICATIONS = [
-  { id: "n1", title: "Workflow “Lead Router” ran — Contact form → CRM", time: "2m ago" },
-  { id: "n2", title: "Deploy shipped — production · build #214", time: "1h ago" },
-  { id: "n3", title: "Priya S. published “Pricing”", time: "Yesterday" },
-];
+// No seeded notifications — populated by real activity.
+const NOTIFICATIONS: { id: string; title: string; time: string }[] = [];
 
 export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: string[] }) {
   const router = useRouter();
@@ -52,6 +50,10 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState(false);
   const { user, setRole } = useAuth();
+  const { current } = useSpaces();
+  // The leading breadcrumb is the active space. The legacy "Acme Digital"
+  // placeholder passed by pages is dropped so a fresh/empty account shows none.
+  const crumbs = current?.name ? [current.name] : (breadcrumb ?? []).filter((c) => c !== "Acme Digital");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -68,16 +70,17 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const logout = () => {
-    document.cookie = "fb_role=; path=/; max-age=0; samesite=lax";
+  const logout = async () => {
     setRoleOpen(false);
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    document.cookie = "fb_role=; path=/; max-age=0; samesite=lax";
     router.push("/login");
   };
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-bg px-5">
       <div className="flex min-w-0 items-center gap-2 text-[13px]">
-        {breadcrumb?.map((b) => (
+        {crumbs.map((b) => (
           <span key={b} className="flex items-center gap-2 text-fg-muted">
             {b}
             <span className="text-fg-subtle">/</span>

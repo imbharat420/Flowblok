@@ -1,126 +1,97 @@
-// Repository layer — the ONLY layer that talks to the data source.
-// Holds its own in-memory seed array. Swap for Prisma/Supabase without
-// touching the service or controller.
+// Spaces repository (Postgres/Drizzle). A space is a "site"/workspace owned by
+// an account; all content/workflows hang off it. Owner-scoped throughout.
 
+import { randomUUID } from "node:crypto";
+import { and, desc, eq } from "drizzle-orm";
 import type { CreateSpaceInput, Space } from "./spaces.types";
+import { getDb } from "@/server/db/client";
+import { spaces as t } from "@/server/db/schema";
+
+type Row = typeof t.$inferSelect;
+const iso = (v: string | null) => (v ? new Date(v).toISOString() : null);
+
+function rowToSpace(r: Row): Space {
+  return {
+    id: r.id,
+    name: r.name,
+    plan: r.plan as Space["plan"],
+    status: r.status as Space["status"],
+    members: r.members,
+    region: r.region,
+    createdAt: new Date(r.createdAt).toISOString(),
+    archivedAt: iso(r.archivedAt),
+    purgeAt: iso(r.purgeAt),
+  };
+}
+
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "site";
+}
 
 const ARCHIVE_DAYS = 30;
 
-const spaces: Space[] = [
-  {
-    id: "spc_acme_digital",
-    name: "Acme Digital",
-    plan: "Enterprise",
-    status: "active",
-    members: 48,
-    region: "us-east-1",
-    createdAt: "2023-02-14T09:12:00.000Z",
-  },
-  {
-    id: "spc_northwind_mktg",
-    name: "Northwind Marketing",
-    plan: "Business",
-    status: "active",
-    members: 22,
-    region: "eu-west-1",
-    createdAt: "2023-06-30T14:05:00.000Z",
-  },
-  {
-    id: "spc_globex_docs",
-    name: "Globex Docs",
-    plan: "Professional",
-    status: "active",
-    members: 11,
-    region: "us-west-2",
-    createdAt: "2024-01-09T11:40:00.000Z",
-  },
-  {
-    id: "spc_initech_labs",
-    name: "Initech Labs",
-    plan: "Starter",
-    status: "paused",
-    members: 3,
-    region: "ap-southeast-1",
-    createdAt: "2024-03-22T08:00:00.000Z",
-  },
-  {
-    id: "spc_umbrella_store",
-    name: "Umbrella Store",
-    plan: "Business",
-    status: "active",
-    members: 19,
-    region: "eu-central-1",
-    createdAt: "2024-05-18T16:25:00.000Z",
-  },
-  {
-    id: "spc_hooli_internal",
-    name: "Hooli Internal",
-    plan: "Enterprise",
-    status: "active",
-    members: 67,
-    region: "us-east-1",
-    createdAt: "2022-11-01T10:30:00.000Z",
-  },
-  {
-    id: "spc_soylent_blog",
-    name: "Soylent Blog",
-    plan: "Starter",
-    status: "paused",
-    members: 2,
-    region: "us-west-2",
-    createdAt: "2024-09-12T13:15:00.000Z",
-  },
-  {
-    id: "spc_wayne_press",
-    name: "Wayne Press",
-    plan: "Professional",
-    status: "active",
-    members: 14,
-    region: "ap-northeast-1",
-    createdAt: "2025-01-27T07:55:00.000Z",
-  },
-];
-
 export class SpacesRepository {
-  findAll(): Space[] {
-    return spaces;
+  async findAllForOwner(ownerId: string): Promise<Space[]> {
+    const db = await getDb();
+    const rows = await db.select().from(t).where(eq(t.ownerId, ownerId)).orderBy(desc(t.createdAt));
+    return rows.map(rowToSpace);
   }
 
-  findById(id: string): Space | undefined {
-    return spaces.find((s) => s.id === id);
+  async findById(id: string): Promise<Space | undefined> {
+    const db = await getDb();
+    const rows = await db.select().from(t).where(eq(t.id, id)).limit(1);
+    return rows[0] ? rowToSpace(rows[0]) : undefined;
   }
 
-  create(input: CreateSpaceInput): Space {
-    const space: Space = {
-      id: "spc_" + input.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 28) + "_" + (spaces.length + 1),
-      name: input.name,
-      plan: input.plan ?? "Starter",
-      status: "active",
-      members: 1,
-      region: input.region ?? "us-east-1",
-      createdAt: new Date().toISOString(),
-      archivedAt: null,
-      purgeAt: null,
-    };
-    spaces.unshift(space);
-    return space;
+  // Confirm a space belongs to an owner (authorization helper).
+  async ownedBy(id: string, ownerId: string): Promise<boolean> {
+    const db = await getDb();
+    const rows = await db.select({ id: t.id }).from(t).where(and(eq(t.id, id), eq(t.ownerId, ownerId))).limit(1);
+    return rows.length > 0;
   }
 
-  archive(id: string): Space | undefined {
-    const s = this.findById(id);
-    if (!s) return undefined;
+  async create(ownerId: string, input: CreateSpaceInput & { niche?: string }): Promise<Space> {
+    const db = await getDb();
+    const [row] = await db
+      .insert(t)
+      .values({
+        id: "spc_" + randomUUID().slice(0, 12),
+        ownerId,
+        name: input.name,
+        slug: slugify(input.name),
+        niche: input.niche ?? "general",
+        plan: input.plan ?? "Starter",
+        region: input.region ?? "us-east-1",
+        status: "active",
+        members: 1,
+      })
+      .returning();
+    return rowToSpace(row);
+  }
+
+  async archive(id: string): Promise<Space | undefined> {
+    const db = await getDb();
     const now = new Date();
-    s.archivedAt = now.toISOString();
-    s.purgeAt = new Date(now.getTime() + ARCHIVE_DAYS * 86400000).toISOString();
-    return s;
+    const [row] = await db
+      .update(t)
+      .set({
+        archivedAt: now.toISOString(),
+        purgeAt: new Date(now.getTime() + ARCHIVE_DAYS * 86400000).toISOString(),
+        updatedAt: now.toISOString(),
+      })
+      .where(eq(t.id, id))
+      .returning();
+    return row ? rowToSpace(row) : undefined;
   }
 
-  restore(id: string): Space | undefined {
-    const s = this.findById(id);
-    if (!s) return undefined;
-    s.archivedAt = null;
-    s.purgeAt = null;
-    return s;
+  async restore(id: string): Promise<Space | undefined> {
+    const db = await getDb();
+    const [row] = await db
+      .update(t)
+      .set({ archivedAt: null, purgeAt: null, updatedAt: new Date().toISOString() })
+      .where(eq(t.id, id))
+      .returning();
+    return row ? rowToSpace(row) : undefined;
   }
 }
 

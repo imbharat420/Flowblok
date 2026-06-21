@@ -10,10 +10,10 @@ import type {
 } from "./settings.types";
 
 const general: SpaceGeneral = {
-  name: "Acme Digital",
-  region: "eu-west-1",
+  name: "My Space",
+  region: "us-east-1",
   environment: "production",
-  spaceId: "spc_8421f0a9c3",
+  spaceId: "",
 };
 
 const plans: PlanCard[] = [
@@ -59,29 +59,8 @@ const plans: PlanCard[] = [
   },
 ];
 
-const domains: DomainEntry[] = [
-  {
-    id: "dom_1",
-    host: "www.acmedigital.com",
-    primary: true,
-    status: "verified",
-    addedAt: "2025-11-02T09:15:00.000Z",
-  },
-  {
-    id: "dom_2",
-    host: "preview.acmedigital.com",
-    primary: false,
-    status: "verified",
-    addedAt: "2026-01-18T14:42:00.000Z",
-  },
-  {
-    id: "dom_3",
-    host: "campaign.acme.io",
-    primary: false,
-    status: "pending",
-    addedAt: "2026-06-10T11:03:00.000Z",
-  },
-];
+// Cleared: no demo domains. Add your own in Settings → Domains.
+const domains: DomainEntry[] = [];
 
 const toggles: DeveloperToggle[] = [
   {

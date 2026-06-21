@@ -1,13 +1,15 @@
-// Credentials data source. Holds raw (plaintext) secret values — masking is a
-// concern of the controller, never the repository.
+// Credentials data source (Postgres/Drizzle). Secret bags are encrypted at rest
+// (AES-256-GCM); the repository decrypts on read so callers still receive a
+// plain Record<string,string>. Masking remains a controller concern.
 
-import type {
-  Credential,
-  CreateCredentialInput,
-  UpdateCredentialInput,
-} from "./credentials.types";
+import type { Credential, CreateCredentialInput, UpdateCredentialInput } from "./credentials.types";
+import { getDb } from "@/server/db/client";
+import { credentials as credTable } from "@/server/db/schema";
+import { encryptBag, decryptBag } from "@/server/db/encryption";
+import { eq, desc, inArray } from "drizzle-orm";
 
-const SEED_CREDENTIALS: Credential[] = [
+// Seeded on first boot (see src/server/db/seed.ts). Example placeholders only.
+export const SEED_CREDENTIALS: Credential[] = [
   {
     id: "cred_anthropic",
     name: "Anthropic (production)",
@@ -24,55 +26,74 @@ const SEED_CREDENTIALS: Credential[] = [
   },
 ];
 
-// Pin the mutable list on globalThis. In Next.js dev, each route-handler file is
-// a separate bundle that would otherwise hold its own copy of a plain
-// module-level array — so a credential created via one route wouldn't be seen by
-// another. A single global array keeps create/update/remove consistent across
-// every route handler and survives HMR re-evaluation.
-const globalStore = globalThis as unknown as { __flowblokCredentials?: Credential[] };
-const CREDENTIALS: Credential[] = (globalStore.__flowblokCredentials ??= SEED_CREDENTIALS);
+type CredRow = typeof credTable.$inferSelect;
+function rowToCred(r: CredRow): Credential {
+  return {
+    id: r.id,
+    name: r.name,
+    type: r.type as Credential["type"],
+    createdAt: new Date(r.createdAt).toISOString(),
+    data: decryptBag(r.dataEnc),
+  };
+}
 
 export class CredentialsRepository {
-  findAll(): Credential[] {
-    return CREDENTIALS;
+  async findAllForSpace(spaceId: string): Promise<Credential[]> {
+    const db = await getDb();
+    const rows = await db
+      .select()
+      .from(credTable)
+      .where(eq(credTable.spaceId, spaceId))
+      .orderBy(desc(credTable.createdAt));
+    return rows.map(rowToCred);
   }
 
-  findById(id: string): Credential | undefined {
-    return CREDENTIALS.find((c) => c.id === id);
+  async findById(id: string): Promise<Credential | undefined> {
+    const db = await getDb();
+    const rows = await db.select().from(credTable).where(eq(credTable.id, id)).limit(1);
+    return rows[0] ? rowToCred(rows[0]) : undefined;
   }
 
-  create(input: CreateCredentialInput): Credential {
-    const cred: Credential = {
-      id: "cred_" + Date.now().toString(36),
-      name: input.name,
-      type: input.type,
-      createdAt: new Date().toISOString(),
-      data: { ...input.data },
-    };
-    CREDENTIALS.unshift(cred);
-    return cred;
+  // Fetch (and decrypt) only the referenced credentials — used by the engine so
+  // a run doesn't scan + decrypt every stored secret.
+  async findByIds(ids: string[]): Promise<Credential[]> {
+    if (!ids.length) return [];
+    const db = await getDb();
+    const rows = await db.select().from(credTable).where(inArray(credTable.id, ids));
+    return rows.map(rowToCred);
   }
 
-  update(id: string, patch: UpdateCredentialInput): Credential | undefined {
-    const idx = CREDENTIALS.findIndex((c) => c.id === id);
-    if (idx === -1) return undefined;
-    const current = CREDENTIALS[idx];
-    CREDENTIALS[idx] = {
-      ...current,
-      ...(patch.name !== undefined ? { name: patch.name } : {}),
-      ...(patch.type !== undefined ? { type: patch.type } : {}),
-      // Replace the whole secret bag when provided — partial merges would leave
-      // stale keys behind.
-      ...(patch.data !== undefined ? { data: { ...patch.data } } : {}),
-    };
-    return CREDENTIALS[idx];
+  async create(input: CreateCredentialInput, spaceId?: string | null): Promise<Credential> {
+    const db = await getDb();
+    const [row] = await db
+      .insert(credTable)
+      .values({
+        id: "cred_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        name: input.name,
+        type: input.type,
+        dataEnc: encryptBag(input.data),
+        spaceId: spaceId ?? null,
+      })
+      .returning();
+    return rowToCred(row);
   }
 
-  remove(id: string): Credential | undefined {
-    const idx = CREDENTIALS.findIndex((c) => c.id === id);
-    if (idx === -1) return undefined;
-    const [removed] = CREDENTIALS.splice(idx, 1);
-    return removed;
+  async update(id: string, patch: UpdateCredentialInput): Promise<Credential | undefined> {
+    const db = await getDb();
+    const set: Partial<CredRow> = {};
+    if (patch.name !== undefined) set.name = patch.name;
+    if (patch.type !== undefined) set.type = patch.type;
+    // Replace the whole secret bag when provided — partial merges leave stale keys.
+    if (patch.data !== undefined) set.dataEnc = encryptBag(patch.data);
+    if (Object.keys(set).length === 0) return this.findById(id);
+    const [row] = await db.update(credTable).set(set).where(eq(credTable.id, id)).returning();
+    return row ? rowToCred(row) : undefined;
+  }
+
+  async remove(id: string): Promise<Credential | undefined> {
+    const db = await getDb();
+    const [row] = await db.delete(credTable).where(eq(credTable.id, id)).returning();
+    return row ? rowToCred(row) : undefined;
   }
 }
 

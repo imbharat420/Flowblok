@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { spacesController } from "@/server/spaces/spaces.controller";
 
-export function GET() {
-  const r = spacesController.archived();
+export async function GET() {
+  const r = await spacesController.archived();
   return NextResponse.json(r.body, { status: r.status });
 }
