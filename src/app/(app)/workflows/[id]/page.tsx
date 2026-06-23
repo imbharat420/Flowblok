@@ -8,7 +8,8 @@ import { getIcon } from "@/lib/icon";
 import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
 import { SUB_PORTS, SUB_PORT_LABEL, SUB_NODE_PORT, isSubPort, type SubPort } from "@/lib/subnodes";
 import { visibleParams } from "@/lib/params";
-import { ChevronLeft, ChevronRight, ArrowLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText, SlidersHorizontal, LayoutGrid, ZoomIn, ZoomOut, Maximize, Map as MapIcon, Settings2, MoreHorizontal, Power, PowerOff, Maximize2, Pencil, Replace, Pin, PinOff, Copy, CopyPlus, Wand2, Workflow as WorkflowIcon, BoxSelect, SquareX, StickyNote } from "lucide-react";
+import { convertN8nWorkflow } from "@/lib/n8n-import";
+import { ChevronLeft, ChevronRight, ArrowLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText, SlidersHorizontal, LayoutGrid, ZoomIn, ZoomOut, Maximize, Map as MapIcon, Settings2, MoreHorizontal, MoreVertical, Power, PowerOff, Maximize2, Pencil, Replace, Pin, PinOff, Copy, CopyPlus, Wand2, Workflow as WorkflowIcon, BoxSelect, SquareX, StickyNote, Download, Upload, Link2 } from "lucide-react";
 import { NodeDetailView } from "./node-detail-view";
 
 const NODE_W = 184;
@@ -103,7 +104,21 @@ export default function WorkflowCanvasPage() {
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [lastRun, setLastRun] = useState<WorkflowRun | null>(null);
-  const [logOpen, setLogOpen] = useState(false);
+  // Canvas tab: the graph editor vs. the run-results panel (n8n's Editor /
+  // Executions tabs). Keeps run output off the canvas so it never overlaps the
+  // zoom controls / minimap.
+  const [tab, setTab] = useState<"editor" | "executions">("editor");
+  // Top-right ⋯ workflow menu (import / export / duplicate / rename).
+  const [wfMenu, setWfMenu] = useState(false);
+  const [importUrlOpen, setImportUrlOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // "Convert from n8n" panel — paste an n8n export object or fetch one by URL.
+  const [n8nOpen, setN8nOpen] = useState(false);
+  const [n8nText, setN8nText] = useState("");
+  const [n8nUrl, setN8nUrl] = useState("");
+  const [n8nMsg, setN8nMsg] = useState<string | null>(null);
+  const [n8nBusy, setN8nBusy] = useState(false);
   // Which panel is shown as a bottom sheet on mobile (Canva-style); desktop
   // shows both rails permanently and ignores this.
   const [mobileSheet, setMobileSheet] = useState<"palette" | "inspector" | null>(null);
@@ -606,11 +621,13 @@ export default function WorkflowCanvasPage() {
           nodeLogs: [],
           error: result?.error ?? `Run failed (HTTP ${res.status})`,
         });
-        setLogOpen(true);
+        setTab("executions");
         return;
       }
       setLastRun(result);
-      setLogOpen(true);
+      // Stay on the editor so the per-node run animation is visible; surface
+      // failures on the Executions tab so they aren't missed.
+      if (result.status === "error") setTab("executions");
       for (const nl of result.nodeLogs) {
         setRunningId(nl.nodeId);
         await delay(260);
@@ -638,6 +655,154 @@ export default function WorkflowCanvasPage() {
     }
   };
 
+  // ---- workflow import / export (⋯ menu) ----
+
+  // Download the canvas as a JSON file (round-trips with "Import from file").
+  const exportJson = () => {
+    if (!wf) return;
+    const data = { name: wf.name, status: wf.status, nodes: wf.nodes, connections: wf.connections };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${wf.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "workflow"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setWfMenu(false);
+  };
+
+  // Replace the current canvas with an imported workflow JSON (our export shape:
+  // { name?, nodes[], connections[] }). Imports onto the open workflow, like n8n.
+  const applyImported = (raw: unknown): boolean => {
+    const data = raw as { name?: unknown; nodes?: unknown; connections?: unknown } | null;
+    if (!data || !Array.isArray(data.nodes)) {
+      alert("Invalid workflow JSON — expected a { nodes, connections } object.");
+      return false;
+    }
+    setWf((prev) =>
+      prev
+        ? {
+            ...prev,
+            name: typeof data.name === "string" && data.name.trim() ? data.name : prev.name,
+            nodes: data.nodes as WorkflowNode[],
+            connections: Array.isArray(data.connections) ? (data.connections as Workflow["connections"]) : [],
+          }
+        : prev,
+    );
+    setSelected(null);
+    setSelectedConn(null);
+    setLastRun(null);
+    setTab("editor");
+    return true;
+  };
+
+  const importFromFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        applyImported(JSON.parse(String(reader.result)));
+      } catch {
+        alert("Could not parse the selected file as JSON.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const importFromUrl = async () => {
+    const url = importUrl.trim();
+    if (!url) return;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(String(r.status));
+      if (applyImported(await r.json())) {
+        setImportUrlOpen(false);
+        setImportUrl("");
+      }
+    } catch {
+      alert("Could not fetch or parse a workflow from that URL.");
+    }
+  };
+
+  // Convert an n8n workflow (pasted object or fetched URL) into this flow.
+  const importFromN8n = async () => {
+    setN8nMsg(null);
+    setN8nBusy(true);
+    try {
+      let raw: unknown = null;
+      if (n8nText.trim()) {
+        raw = JSON.parse(n8nText);
+      } else if (n8nUrl.trim()) {
+        const r = await fetch(n8nUrl.trim());
+        if (!r.ok) throw new Error(String(r.status));
+        raw = await r.json();
+      } else {
+        setN8nMsg("Paste an n8n workflow JSON, or enter a URL.");
+        return;
+      }
+      const converted = convertN8nWorkflow(raw, new Set(types.map((t) => t.type)));
+      if (!converted) {
+        setN8nMsg("That doesn't look like an n8n workflow export ({ nodes, connections }).");
+        return;
+      }
+      setWf((prev) =>
+        prev
+          ? { ...prev, name: converted.name, nodes: converted.nodes, connections: converted.connections }
+          : prev,
+      );
+      setSelected(null);
+      setSelectedConn(null);
+      setLastRun(null);
+      setTab("editor");
+      setN8nOpen(false);
+      setN8nText("");
+      setN8nUrl("");
+      const warn = converted.unmapped.length
+        ? `\n\n${converted.unmapped.length} unsupported node type(s) became “No Operation” — review them:\n• ${converted.unmapped.join("\n• ")}`
+        : "";
+      alert(
+        `Imported ${converted.nodes.length} node(s) and ${converted.connections.length} connection(s) from n8n. Click Save to persist.${warn}`,
+      );
+    } catch (e) {
+      setN8nMsg(
+        e instanceof SyntaxError
+          ? "Could not parse that as JSON."
+          : "Could not fetch or read a workflow from that URL.",
+      );
+    } finally {
+      setN8nBusy(false);
+    }
+  };
+
+  // Save a copy as a brand-new workflow and open it.
+  const duplicateWorkflow = async () => {
+    if (!wf) return;
+    setWfMenu(false);
+    const created = await fetch("/api/workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: `${wf.name} copy` }),
+    })
+      .then((r) => (r.ok ? (r.json() as Promise<Workflow>) : null))
+      .catch(() => null);
+    if (!created?.id) {
+      alert("Could not duplicate this workflow.");
+      return;
+    }
+    await fetch(`/api/workflows/${created.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nodes: wf.nodes, connections: wf.connections }),
+    });
+    window.location.href = `/workflows/${created.id}`;
+  };
+
+  const renameWorkflow = () => {
+    if (!wf) return;
+    setWfMenu(false);
+    const name = window.prompt("Rename workflow", wf.name)?.trim();
+    if (name && name !== wf.name) setWf({ ...wf, name });
+  };
+
   // Activate / pause — persists immediately, like n8n's active toggle.
   const setStatus = async (status: WorkflowStatus) => {
     if (!wf) return;
@@ -650,11 +815,17 @@ export default function WorkflowCanvasPage() {
   };
 
   const canvasSize = useMemo(() => {
-    if (!wf) return { w: 1200, h: 640 };
-    const maxX = Math.max(0, ...wf.nodes.map((n) => n.x + NODE_W));
-    const maxY = Math.max(0, ...wf.nodes.map((n) => n.y + NODE_H));
-    return { w: Math.max(1200, maxX + 300), h: Math.max(640, maxY + 200) };
-  }, [wf]);
+    const maxX = wf ? Math.max(0, ...wf.nodes.map((n) => n.x + NODE_W)) : 0;
+    const maxY = wf ? Math.max(0, ...wf.nodes.map((n) => n.y + NODE_H)) : 0;
+    // Always keep the canvas larger than the visible viewport so there's room
+    // to pan / wheel-scroll even on a big desktop screen with few nodes (native
+    // overflow has no scroll range when content fits, which reads as "drag /
+    // scroll not working"). `view.vw/vh` are the scroll container's client size.
+    const PAD = 800; // breathing room beyond content and beyond the viewport
+    const vw = view.vw || 1400;
+    const vh = view.vh || 800;
+    return { w: Math.max(maxX + PAD, vw + PAD), h: Math.max(maxY + PAD, vh + PAD) };
+  }, [wf, view.vw, view.vh]);
 
   // minimap geometry (preserves the canvas aspect ratio within a small box)
   const mm = useMemo(() => {
@@ -894,6 +1065,23 @@ export default function WorkflowCanvasPage() {
           <span className={wf.status === "active" ? "text-ok" : "text-fg-muted"}>{wf.status}</span>
         </button>
         <div className="flex-1" />
+        {lastRun && (
+          <button
+            onClick={() => setTab("executions")}
+            title="View last run"
+            className={cn(
+              "hidden items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors sm:inline-flex",
+              lastRun.status === "success"
+                ? "bg-ok/15 text-ok hover:bg-ok/20"
+                : lastRun.status === "error"
+                  ? "bg-err/15 text-err hover:bg-err/20"
+                  : "bg-surface-2 text-fg-muted",
+            )}
+          >
+            {lastRun.status === "success" ? <Check className="h-3 w-3" /> : <CircleAlert className="h-3 w-3" />}
+            Last run {lastRun.status}
+          </button>
+        )}
         <span className="nums text-[12px] text-fg-subtle">{wf.runs.toLocaleString()} runs</span>
         <button
           onClick={save}
@@ -917,6 +1105,61 @@ export default function WorkflowCanvasPage() {
           {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
           {running ? "Running…" : "Test workflow"}
         </button>
+
+        {/* ⋯ workflow menu — import / export / duplicate / rename (n8n-style) */}
+        <div className="relative">
+          <button
+            onClick={() => setWfMenu((v) => !v)}
+            title="More"
+            className={cn(
+              "grid h-8 w-8 place-items-center rounded-md border border-border transition-colors hover:border-border-strong",
+              wfMenu && "border-border-strong bg-surface-2",
+            )}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+          {wfMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setWfMenu(false)} />
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-lg border border-border-strong bg-surface p-1 shadow-2xl">
+                {[
+                  { icon: Pencil, label: "Rename", onClick: renameWorkflow },
+                  { icon: CopyPlus, label: "Duplicate", onClick: duplicateWorkflow },
+                  { icon: Download, label: "Download", onClick: exportJson, divider: true },
+                  { icon: Upload, label: "Import from file…", onClick: () => { setWfMenu(false); fileInputRef.current?.click(); } },
+                  { icon: Link2, label: "Import from URL…", onClick: () => { setWfMenu(false); setImportUrlOpen(true); } },
+                  { icon: WorkflowIcon, label: "Convert from n8n…", onClick: () => { setWfMenu(false); setN8nMsg(null); setN8nOpen(true); }, divider: true },
+                ].map((it, i) => {
+                  const Ico = it.icon;
+                  return (
+                    <button
+                      key={i}
+                      onClick={it.onClick}
+                      className={cn(
+                        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[12.5px] text-fg-muted hover:bg-surface-2 hover:text-fg",
+                        it.divider && "mt-1 border-t border-border pt-2",
+                      )}
+                    >
+                      <Ico className="h-3.5 w-3.5 shrink-0" /> {it.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+        {/* hidden file picker for "Import from file" */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) importFromFile(f);
+            e.target.value = ""; // allow re-importing the same file
+          }}
+        />
       </div>
 
       <div className="relative flex min-h-0 flex-1 lg:overflow-x-auto">
@@ -1043,6 +1286,37 @@ export default function WorkflowCanvasPage() {
 
         {/* canvas */}
         <div className="relative flex-1 lg:min-w-[320px]">
+        {/* Editor / Executions tabs — centered at the top, like n8n */}
+        <div className="pointer-events-none absolute inset-x-0 top-2.5 z-30 flex justify-center">
+          <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-0.5 shadow-lg backdrop-blur">
+            {([
+              { key: "editor", label: "Editor", icon: WorkflowIcon },
+              { key: "executions", label: "Executions", icon: ScrollText },
+            ] as const).map((t) => {
+              const Ico = t.icon;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-3 py-1 text-[12.5px] font-medium transition-colors",
+                    tab === t.key ? "bg-surface-2 text-fg" : "text-fg-muted hover:text-fg",
+                  )}
+                >
+                  <Ico className="h-3.5 w-3.5" /> {t.label}
+                  {t.key === "executions" && lastRun && (
+                    <span
+                      className={cn(
+                        "ml-0.5 h-1.5 w-1.5 rounded-full",
+                        lastRun.status === "success" ? "bg-ok" : lastRun.status === "error" ? "bg-err" : "bg-fg-subtle",
+                      )}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div
           ref={scrollRef}
           onScroll={syncView}
@@ -1469,14 +1743,14 @@ export default function WorkflowCanvasPage() {
           </div>
         </div>
 
-        {lastRun && logOpen && (
-            <div
-              className="absolute inset-x-0 bottom-0 z-20 max-h-[45%] overflow-y-auto border-t border-border-strong bg-surface/95 backdrop-blur"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="sticky top-0 flex items-center justify-between border-b border-border bg-surface px-4 py-2">
-                <div className="flex items-center gap-2 text-[12px]">
-                  <ScrollText className="h-3.5 w-3.5 text-fg-muted" />
+        {/* Executions tab — full panel over the canvas (no bottom overlap with
+            the zoom controls / minimap). */}
+        {tab === "executions" && (
+          <div className="absolute inset-0 z-20 overflow-y-auto bg-bg/95 pt-14 backdrop-blur" onClick={(e) => e.stopPropagation()}>
+            {lastRun ? (
+              <div className="mx-auto max-w-2xl px-4 pb-8">
+                <div className="flex items-center gap-2 py-3 text-[13px]">
+                  <ScrollText className="h-4 w-4 text-fg-muted" />
                   <span className="font-medium text-fg">Last run</span>
                   <span
                     className={cn(
@@ -1490,47 +1764,50 @@ export default function WorkflowCanvasPage() {
                   >
                     {lastRun.status}
                   </span>
-                  <span className="text-fg-subtle">
-                    · {lastRun.durationMs}ms · {lastRun.trigger}
-                  </span>
+                  <span className="text-fg-subtle">· {lastRun.durationMs}ms · {lastRun.trigger}</span>
                 </div>
-                <button
-                  onClick={() => setLogOpen(false)}
-                  className="text-fg-muted hover:text-fg"
-                  aria-label="Close run log"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              {lastRun.error && (
-                <p className="border-b border-err/30 bg-err/5 px-4 py-2 text-[12px] text-err">{lastRun.error}</p>
-              )}
-              <ul className="divide-y divide-border">
-                {(lastRun.nodeLogs ?? []).map((nl) => (
-                  <li key={nl.nodeId} className="px-4 py-2">
-                    <div className="flex items-center gap-2 text-[12px]">
-                      {nl.status === "success" ? (
-                        <Check className="h-3.5 w-3.5 shrink-0 text-ok" />
-                      ) : nl.status === "error" ? (
-                        <CircleAlert className="h-3.5 w-3.5 shrink-0 text-err" />
-                      ) : (
-                        <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-fg-subtle" />
+                {lastRun.error && (
+                  <p className="mb-2 rounded-md border border-err/30 bg-err/5 px-3 py-2 text-[12px] text-err">{lastRun.error}</p>
+                )}
+                <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
+                  {(lastRun.nodeLogs ?? []).map((nl) => (
+                    <li key={nl.nodeId} className="px-4 py-2.5">
+                      <div className="flex items-center gap-2 text-[12px]">
+                        {nl.status === "success" ? (
+                          <Check className="h-3.5 w-3.5 shrink-0 text-ok" />
+                        ) : nl.status === "error" ? (
+                          <CircleAlert className="h-3.5 w-3.5 shrink-0 text-err" />
+                        ) : (
+                          <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-fg-subtle" />
+                        )}
+                        <span className="font-medium text-fg">{nl.nodeName}</span>
+                        <span className="font-mono text-[11px] text-fg-subtle">{nl.nodeType}</span>
+                        <span className="text-fg-subtle">· {nl.itemsIn}→{nl.itemsOut}</span>
+                      </div>
+                      {nl.messages.length > 0 && (
+                        <p className="mt-0.5 pl-5 text-[11px] text-fg-muted">{nl.messages.join(" · ")}</p>
                       )}
-                      <span className="font-medium text-fg">{nl.nodeName}</span>
-                      <span className="font-mono text-[11px] text-fg-subtle">{nl.nodeType}</span>
-                      <span className="text-fg-subtle">
-                        · {nl.itemsIn}→{nl.itemsOut}
-                      </span>
-                    </div>
-                    {nl.messages.length > 0 && (
-                      <p className="mt-0.5 pl-5 text-[11px] text-fg-muted">{nl.messages.join(" · ")}</p>
-                    )}
-                    {nl.error && <p className="mt-0.5 pl-5 text-[11px] text-err">{nl.error}</p>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                      {nl.error && <p className="mt-0.5 pl-5 text-[11px] text-err">{nl.error}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="grid h-full place-items-center">
+                <div className="text-center">
+                  <ScrollText className="mx-auto mb-3 h-7 w-7 text-fg-subtle" />
+                  <p className="text-[13px] text-fg-muted">No executions yet.</p>
+                  <button
+                    onClick={() => { setTab("editor"); run(); }}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[12px] font-medium text-accent-fg hover:bg-accent-hover"
+                  >
+                    <Play className="h-3.5 w-3.5" /> Test workflow
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* zoom + canvas controls — pinned to the canvas viewport; hidden on
             mobile while a bottom sheet is open so they don't overlap it */}
@@ -1538,6 +1815,7 @@ export default function WorkflowCanvasPage() {
           className={cn(
             "absolute bottom-3 left-3 z-30 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-1 shadow-lg backdrop-blur",
             mobileSheet && "max-lg:hidden",
+            tab !== "editor" && "hidden",
           )}
         >
           <button onClick={() => applyZoom(zoomRef.current - 0.15)} title="Zoom out" className="grid h-7 w-7 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg">
@@ -1618,7 +1896,7 @@ export default function WorkflowCanvasPage() {
 
         {/* minimap — pinned to the canvas viewport; tap to recentre; hidden on
             mobile while a bottom sheet is open */}
-        {showMinimap && wf.nodes.length > 0 && (
+        {showMinimap && wf.nodes.length > 0 && tab === "editor" && (
           <div
             className={cn(
               "absolute bottom-3 right-3 z-30 cursor-pointer overflow-hidden rounded-lg border border-border bg-[#0a0a0a]/95 shadow-lg backdrop-blur",
@@ -1844,6 +2122,108 @@ export default function WorkflowCanvasPage() {
               ) : (
                 <p className="px-2 text-[12px] text-fg-subtle">No nodes match.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import from URL — small modal */}
+      {importUrlOpen && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"
+          onClick={() => setImportUrlOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-border-strong bg-surface p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-fg-muted" />
+              <span className="text-[14px] font-semibold text-fg">Import workflow from URL</span>
+            </div>
+            <input
+              autoFocus
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && importFromUrl()}
+              placeholder="https://example.com/workflow.json"
+              className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent"
+            />
+            <p className="mt-2 text-[11px] text-fg-subtle">
+              Expects a Flowblok workflow JSON (a <span className="font-mono">{`{ nodes, connections }`}</span> object, e.g. one made with Download).
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setImportUrlOpen(false)}
+                className="rounded-md border border-border px-3 py-1.5 text-[13px] text-fg-muted hover:border-border-strong hover:text-fg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={importFromUrl}
+                disabled={!importUrl.trim()}
+                className="rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-50"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Convert from n8n — paste an n8n export object or fetch it by URL */}
+      {n8nOpen && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4"
+          onClick={() => setN8nOpen(false)}
+        >
+          <div
+            className="flex max-h-[88vh] w-full max-w-lg flex-col rounded-xl border border-border-strong bg-surface p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <WorkflowIcon className="h-4 w-4 text-fg-muted" />
+              <span className="text-[14px] font-semibold text-fg">Convert an n8n workflow</span>
+            </div>
+            <p className="mb-3 text-[11px] leading-snug text-fg-subtle">
+              Paste an n8n workflow JSON (Editor → ⋯ → Download, or "Copy" on selected nodes), or fetch one by URL.
+              Node types are mapped to their Flowblok equivalents; anything unsupported becomes a "No Operation" node you can swap out.
+            </p>
+
+            <textarea
+              value={n8nText}
+              onChange={(e) => setN8nText(e.target.value)}
+              placeholder={`{\n  "name": "My workflow",\n  "nodes": [ … ],\n  "connections": { … }\n}`}
+              className="h-44 w-full resize-y rounded-md border border-border bg-bg px-2.5 py-1.5 font-mono text-[12px] text-fg outline-none focus:border-accent"
+            />
+
+            <div className="my-3 flex items-center gap-3 text-[11px] text-fg-subtle">
+              <span className="h-px flex-1 bg-border" /> or fetch from a URL <span className="h-px flex-1 bg-border" />
+            </div>
+            <input
+              value={n8nUrl}
+              onChange={(e) => setN8nUrl(e.target.value)}
+              placeholder="https://example.com/n8n-workflow.json"
+              className="w-full rounded-md border border-border bg-bg px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent"
+            />
+
+            {n8nMsg && <p className="mt-3 rounded-md border border-err/30 bg-err/5 px-3 py-2 text-[12px] text-err">{n8nMsg}</p>}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setN8nOpen(false)}
+                className="rounded-md border border-border px-3 py-1.5 text-[13px] text-fg-muted hover:border-border-strong hover:text-fg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={importFromN8n}
+                disabled={n8nBusy || (!n8nText.trim() && !n8nUrl.trim())}
+                className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-50"
+              >
+                {n8nBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Convert &amp; import
+              </button>
             </div>
           </div>
         </div>
