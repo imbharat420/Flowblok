@@ -2,10 +2,11 @@
 // an account; all content/workflows hang off it. Owner-scoped throughout.
 
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lt } from "drizzle-orm";
 import type { CreateSpaceInput, Space } from "./spaces.types";
 import { getDb } from "@/server/db/client";
 import { spaces as t } from "@/server/db/schema";
+import { purgeDateFrom } from "@/server/settings/retention";
 
 type Row = typeof t.$inferSelect;
 const iso = (v: string | null) => (v ? new Date(v).toISOString() : null);
@@ -27,8 +28,6 @@ function rowToSpace(r: Row): Space {
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "site";
 }
-
-const ARCHIVE_DAYS = 30;
 
 export class SpacesRepository {
   async findAllForOwner(ownerId: string): Promise<Space[]> {
@@ -76,7 +75,8 @@ export class SpacesRepository {
       .update(t)
       .set({
         archivedAt: now.toISOString(),
-        purgeAt: new Date(now.getTime() + ARCHIVE_DAYS * 86400000).toISOString(),
+        // Purge deadline follows the configured retention; null = Lifetime.
+        purgeAt: purgeDateFrom(now.getTime()),
         updatedAt: now.toISOString(),
       })
       .where(eq(t.id, id))
@@ -92,6 +92,24 @@ export class SpacesRepository {
       .where(eq(t.id, id))
       .returning();
     return row ? rowToSpace(row) : undefined;
+  }
+
+  // Permanently delete a single archived space (manual "delete forever").
+  async remove(id: string): Promise<boolean> {
+    const db = await getDb();
+    const rows = await db.delete(t).where(eq(t.id, id)).returning({ id: t.id });
+    return rows.length > 0;
+  }
+
+  // Lazy purge: hard-delete archived spaces whose retention deadline has passed.
+  // Lifetime items (purgeAt = null) are never selected.
+  async purgeExpired(ownerId: string): Promise<number> {
+    const db = await getDb();
+    const rows = await db
+      .delete(t)
+      .where(and(eq(t.ownerId, ownerId), isNotNull(t.purgeAt), lt(t.purgeAt, new Date().toISOString())))
+      .returning({ id: t.id });
+    return rows.length;
   }
 }
 

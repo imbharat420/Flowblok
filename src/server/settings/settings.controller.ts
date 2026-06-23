@@ -56,6 +56,18 @@ export class SettingsController {
     if (!updated) return { status: 404, body: { error: "Toggle not found", id } };
     return { status: 200, body: updated };
   }
+
+  // PUT /api/settings/archive — set the bin retention period (days; 0 = lifetime).
+  setArchiveRetention(body: unknown): ApiResult {
+    if (!body || typeof body !== "object") {
+      return { status: 400, body: { error: "Invalid body" } };
+    }
+    const { days } = body as Record<string, unknown>;
+    if (typeof days !== "number" || !Number.isInteger(days) || days < 0) {
+      return { status: 400, body: { error: "`days` must be a non-negative integer" } };
+    }
+    return { status: 200, body: { archiveRetentionDays: this.service.setArchiveRetentionDays(days) } };
+  }
 }
 
 export const settingsController = new SettingsController();

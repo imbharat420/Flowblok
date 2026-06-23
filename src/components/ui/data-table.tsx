@@ -23,8 +23,8 @@ export function DataTable<T>({
   getKey: (row: T, i: number) => string;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <table className="w-full text-left text-[13px]">
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full min-w-[640px] text-left text-[13px]">
         <thead>
           <tr className="border-b border-border bg-surface">
             {columns.map((c) => (

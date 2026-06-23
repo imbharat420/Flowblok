@@ -81,7 +81,7 @@ export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
 
   return (
     <div className="mx-auto max-w-[1100px]">
-      <div className="mb-5 flex items-end justify-between">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-fg">Workflows</h1>
           <p className="mt-1 text-[13px] text-fg-muted">
@@ -90,7 +90,7 @@ export function WorkflowsClient({ initial }: { initial: WorkflowItem[] }) {
         </div>
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent-hover"
+          className="flex shrink-0 items-center gap-1.5 self-start rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent-hover sm:self-auto"
         >
           <Plus className="h-3.5 w-3.5" /> New workflow
         </button>

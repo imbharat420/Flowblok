@@ -43,8 +43,8 @@ export default function AccountPage() {
         <span className="text-[13px] font-medium text-fg">Account</span>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="w-[240px] shrink-0 overflow-y-auto border-r border-border bg-surface px-3 py-5">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <aside className="shrink-0 overflow-y-auto border-b border-border bg-surface px-3 py-3 md:w-[240px] md:border-b-0 md:border-r md:py-5">
           {NAV.map((g) => (
             <div key={g.group} className="mb-4">
               <p className="label-caps px-2 pb-1.5">{g.group}</p>
@@ -65,7 +65,7 @@ export default function AccountPage() {
           ))}
         </aside>
 
-        <main className="flex-1 overflow-y-auto px-8 py-7">
+        <main className="flex-1 overflow-y-auto px-4 py-5 md:px-8 md:py-7">
           <div className="mx-auto max-w-[720px]">
             {!snap ? (
               <p className="text-[13px] text-fg-muted">Loading account…</p>
@@ -526,7 +526,7 @@ function Modal({ title, onClose, children, danger }: { title: string; onClose: (
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[16vh]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[16vh]" onClick={onClose}>
       <div className={cn("w-full max-w-[440px] rounded-lg border bg-surface shadow-2xl", danger ? "border-err/40" : "border-border-strong")} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 className="text-[14px] font-medium text-fg">{title}</h2>

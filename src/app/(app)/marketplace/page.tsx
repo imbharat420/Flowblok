@@ -148,7 +148,8 @@ export default function MarketplacePage() {
             description="Templates, plugins, workflows, agents and themes from the Flowblok community."
             actions={
               <Badge tone="accent" dot>
-                Creators keep 80% — 20% platform fee
+                <span className="sm:hidden">Creators keep 80%</span>
+                <span className="hidden sm:inline">Creators keep 80% — 20% platform fee</span>
               </Badge>
             }
           />

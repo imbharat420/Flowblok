@@ -19,7 +19,7 @@ export function Tabs({
   onChange: (key: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 border-b border-border">
+    <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border">
       {tabs.map((t) => {
         const Icon = t.icon;
         return (
@@ -27,7 +27,7 @@ export function Tabs({
             key={t.key}
             onClick={() => onChange(t.key)}
             className={cn(
-              "relative flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors",
+              "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 text-[13px] font-medium transition-colors",
               active === t.key ? "text-fg" : "text-fg-muted hover:text-fg",
             )}
           >

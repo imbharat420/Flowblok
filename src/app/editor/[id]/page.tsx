@@ -36,6 +36,8 @@ import {
   Rocket,
   CloudUpload,
   Eye,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 
 const VIEWPORTS = {
@@ -59,6 +61,9 @@ export default function EditorPage() {
   const [publishing, setPublishing] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<Path | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Which panel is shown as a bottom sheet on mobile (Canva-style). Desktop
+  // shows both panels permanently and ignores this.
+  const [sheet, setSheet] = useState<"layers" | "inspector" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [persona, setPersona] = useState("pro-desktop");
   const ctx = useMemo(() => contextFor(persona), [persona]);
@@ -168,7 +173,7 @@ export default function EditorPage() {
   return (
     <>
       {/* top bar */}
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-bg px-4">
+      <div className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-bg px-3 py-2 sm:px-4 md:h-14 md:flex-nowrap md:gap-3 md:py-0">
         <Link href="/content" className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] text-fg-muted hover:bg-surface-2 hover:text-fg">
           <ChevronLeft className="h-4 w-4" /> Content
         </Link>
@@ -185,7 +190,7 @@ export default function EditorPage() {
 
         {error && <span className="text-[12px] text-err">{error}</span>}
 
-        <div className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5">
+        <div className="hidden items-center gap-0.5 rounded-md border border-border bg-surface p-0.5 sm:flex">
           {(Object.keys(VIEWPORTS) as Viewport[]).map((v) => {
             const Icon = VIEWPORTS[v].icon;
             return (
@@ -245,20 +250,42 @@ export default function EditorPage() {
       </div>
 
       {/* body */}
-      <div className="flex min-h-0 flex-1">
-        {/* layers */}
-        <div className="flex w-[256px] shrink-0 flex-col border-r border-border bg-surface">
+      <div className="relative flex min-h-0 flex-1 lg:overflow-x-auto">
+        {/* shared backdrop for the mobile bottom sheets */}
+        {sheet && (
+          <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSheet(null)} />
+        )}
+
+        {/* layers — permanent left rail on desktop, slide-up sheet on mobile */}
+        <div
+          className={cn(
+            "flex flex-col bg-surface",
+            "lg:w-[256px] lg:shrink-0 lg:border-r lg:border-border",
+            "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[72vh] max-lg:rounded-t-2xl max-lg:border max-lg:border-border max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-300",
+            sheet === "layers" ? "max-lg:translate-y-0" : "max-lg:translate-y-[110%]",
+          )}
+        >
+          <div className="mx-auto mb-1 mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong lg:hidden" />
           <div className="flex items-center justify-between px-3 py-2.5">
             <span className="label-caps flex items-center gap-1.5">
               <Layers className="h-3 w-3" /> Blocks
             </span>
-            <button
-              onClick={() => openPicker([])}
-              title="Add block"
-              className="grid h-6 w-6 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => openPicker([])}
+                title="Add block"
+                className="grid h-6 w-6 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setSheet(null)}
+                title="Close"
+                className="grid h-6 w-6 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg lg:hidden"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto px-1.5 pb-3">
             <LayerRow label="Page" depth={0} active={pathEq(selected, [])} onSelect={() => setSelected([])} canAdd onAdd={() => openPicker([])} />
@@ -291,9 +318,18 @@ export default function EditorPage() {
         </div>
 
         {/* canvas */}
-        <div className="flex-1 overflow-y-auto bg-surface-2/40 p-6" onClick={() => setSelected(null)}>
+        <div className="flex-1 overflow-y-auto bg-surface-2/40 p-4 lg:min-w-[320px] lg:p-6" onClick={() => setSelected(null)}>
           <div className="mx-auto rounded-lg border border-border bg-bg p-6 shadow-sm transition-all" style={{ maxWidth: VIEWPORTS[viewport].width }}>
-            <BlockRenderer node={tree} path={[]} selected={selected} onSelect={setSelected} ctx={ctx} />
+            <BlockRenderer
+              node={tree}
+              path={[]}
+              selected={selected}
+              onSelect={(p) => {
+                setSelected(p);
+                setSheet("inspector"); // mobile: surface properties on tap (ignored on desktop)
+              }}
+              ctx={ctx}
+            />
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -306,18 +342,46 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* inspector */}
+        {/* inspector — permanent right rail on desktop, slide-up sheet on mobile */}
         <div className="relative">
           {selectedNode && (
             <button
               onClick={removeSelected}
-              className="absolute right-4 top-2 z-10 flex items-center gap-1 text-[11px] text-fg-muted hover:text-err"
+              className="absolute right-4 top-2 z-10 hidden items-center gap-1 text-[11px] text-fg-muted hover:text-err lg:flex"
             >
               <Trash2 className="h-3 w-3" /> Remove
             </button>
           )}
-          <Inspector node={selectedNode} def={selectedDef} active={tab} onActive={setTab} onProp={onProp} onBinding={onBinding} ctx={ctx} />
+          <Inspector
+            node={selectedNode}
+            def={selectedDef}
+            active={tab}
+            onActive={setTab}
+            onProp={onProp}
+            onBinding={onBinding}
+            ctx={ctx}
+            mobileOpen={sheet === "inspector"}
+            onMobileClose={() => setSheet(null)}
+            onRemove={selectedNode ? removeSelected : undefined}
+          />
         </div>
+      </div>
+
+      {/* mobile tool bar — Canva/Picsart-style quick access to the panels */}
+      <div className="flex shrink-0 items-center justify-around border-t border-border bg-surface px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
+        <BottomTool
+          icon={Layers}
+          label="Blocks"
+          active={sheet === "layers"}
+          onClick={() => setSheet((s) => (s === "layers" ? null : "layers"))}
+        />
+        <BottomTool icon={Plus} label="Add" onClick={() => openPicker([])} />
+        <BottomTool
+          icon={SlidersHorizontal}
+          label="Edit"
+          active={sheet === "inspector"}
+          onClick={() => setSheet((s) => (s === "inspector" ? null : "inspector"))}
+        />
       </div>
 
       <BlockPicker
@@ -331,6 +395,31 @@ export default function EditorPage() {
       />
       <HistoryDrawer open={historyOpen} storyId={id} onClose={() => setHistoryOpen(false)} onRestored={onRestored} />
     </>
+  );
+}
+
+function BottomTool({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: typeof Layers;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-1 flex-col items-center gap-0.5 rounded-md py-1 text-[10px] font-medium transition-colors",
+        active ? "text-accent" : "text-fg-muted hover:text-fg",
+      )}
+    >
+      <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
+      {label}
+    </button>
   );
 }
 

@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GROUP_LABELS, NAV, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth-context";
+import { useSidebar } from "./sidebar-context";
 import { SpaceSwitcher } from "./space-switcher";
 
 const GROUP_ORDER: NavItem["group"][] = ["workspace", "build", "data", "grow", "system"];
@@ -12,11 +14,27 @@ const GROUP_ORDER: NavItem["group"][] = ["workspace", "build", "data", "grow", "
 export function Sidebar() {
   const pathname = usePathname();
   const { can } = useAuth();
+  const { open, setOpen } = useSidebar();
   // Only show modules the current role is allowed to manage (super admin sees all).
   const visible = NAV.filter((n) => can(n.capability));
 
+  // Close the mobile drawer whenever navigation lands on a new route.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname, setOpen]);
+
   return (
-    <aside className="flex h-screen w-[248px] shrink-0 flex-col border-r border-border bg-surface">
+    <>
+      {/* dim backdrop behind the drawer on mobile / tablet */}
+      {open && (
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />
+      )}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-[248px] shrink-0 flex-col border-r border-border bg-surface transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
       {/* Notion-style multi-space switcher */}
       <SpaceSwitcher />
 
@@ -50,6 +68,7 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-    </aside>
+      </aside>
+    </>
   );
 }

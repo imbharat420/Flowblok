@@ -48,7 +48,7 @@ export function BlockPicker({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[12vh]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[12vh]" onClick={onClose}>
       <div
         className="w-full max-w-[640px] overflow-hidden rounded-lg border border-border-strong bg-surface shadow-2xl"
         onClick={(e) => e.stopPropagation()}

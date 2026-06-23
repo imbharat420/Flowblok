@@ -40,7 +40,20 @@ export interface SettingsSnapshot {
   plans: PlanCard[];
   domains: DomainEntry[];
   toggles: DeveloperToggle[];
+  /** How long archived items stay in the bin before permanent deletion. 0 = lifetime. */
+  archiveRetentionDays: number;
 }
+
+// Retention choices for the archive/bin. `0` means "Lifetime" (never auto-delete).
+export const RETENTION_OPTIONS: Array<{ value: number; label: string }> = [
+  { value: 1, label: "1 day" },
+  { value: 2, label: "2 days" },
+  { value: 7, label: "1 week" },
+  { value: 30, label: "30 days" },
+  { value: 60, label: "60 days" },
+  { value: 90, label: "90 days" },
+  { value: 0, label: "Lifetime" },
+];
 
 export const REGIONS: Array<{ value: string; label: string }> = [
   { value: "eu-west-1", label: "European Union (Frankfurt)" },

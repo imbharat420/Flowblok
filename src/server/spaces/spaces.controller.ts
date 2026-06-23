@@ -61,6 +61,16 @@ export class SpacesController {
     const s = await this.service.restore(id);
     return s ? { status: 200, body: s } : { status: 404, body: { error: "Space not found", id } };
   }
+
+  // DELETE /api/spaces/:id — permanently delete (only from the bin / owner-only).
+  async deleteForever(id: string): Promise<ApiResult> {
+    const ownerId = await getOwnerId();
+    if (!ownerId || !(await spacesRepository.ownedBy(id, ownerId))) {
+      return { status: 404, body: { error: "Space not found", id } };
+    }
+    const ok = await this.service.deleteForever(id);
+    return ok ? { status: 200, body: { ok: true, id } } : { status: 404, body: { error: "Space not found", id } };
+  }
 }
 
 export const spacesController = new SpacesController();

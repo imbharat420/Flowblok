@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { useAuth } from "@/lib/auth-context";
 import { useSpaces } from "@/lib/space-context";
 import { useRouter } from "next/navigation";
-import { REGIONS } from "@/server/settings/settings.types";
+import { REGIONS, RETENTION_OPTIONS } from "@/server/settings/settings.types";
 import type {
   DeveloperToggle,
   DomainEntry,
@@ -111,8 +111,22 @@ function GeneralTab({ snapshot }: { snapshot: SettingsSnapshot }) {
   const [region, setRegion] = useState(snapshot.general.region);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [retention, setRetention] = useState(snapshot.archiveRetentionDays);
+  const [retSaved, setRetSaved] = useState(false);
 
   const dirty = name.trim() !== snapshot.general.name || region !== snapshot.general.region;
+
+  async function saveRetention(days: number) {
+    setRetention(days);
+    setRetSaved(false);
+    await fetch("/api/settings/archive", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days }),
+    }).catch(() => {});
+    snapshot.archiveRetentionDays = days;
+    setRetSaved(true);
+  }
 
   async function save() {
     setSaving(true);
@@ -129,6 +143,7 @@ function GeneralTab({ snapshot }: { snapshot: SettingsSnapshot }) {
   }
 
   return (
+    <div className="space-y-5">
     <Card>
       <p className="label-caps mb-4">General</p>
       <div className="grid gap-5 sm:grid-cols-2">
@@ -175,6 +190,44 @@ function GeneralTab({ snapshot }: { snapshot: SettingsSnapshot }) {
         <span className="ml-auto font-mono text-[11px] text-fg-subtle">{snapshot.general.spaceId}</span>
       </div>
     </Card>
+
+    <Card>
+      <p className="label-caps mb-4">Archive &amp; retention</p>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          label="Keep deleted items for"
+          hint="Archived items move to the bin and are permanently deleted after this period. Choose Lifetime to keep them until you delete them manually."
+        >
+          <select
+            value={retention}
+            onChange={(e) => saveRetention(Number(e.target.value))}
+            className="w-full rounded-md border border-border bg-bg px-3 py-2 text-[13px] text-fg outline-none transition-colors focus:border-border-strong"
+          >
+            {RETENTION_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <div className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-[12px] text-fg-muted">
+        {retention === 0 ? (
+          <span>Archived items are kept forever until you delete them.</span>
+        ) : (
+          <span>
+            Items in the bin are auto-deleted{" "}
+            <span className="text-fg">{RETENTION_OPTIONS.find((o) => o.value === retention)?.label}</span> after they&apos;re archived.
+          </span>
+        )}
+        {retSaved && (
+          <span className="ml-auto flex items-center gap-1 text-ok">
+            <Check className="h-3.5 w-3.5" /> Saved
+          </span>
+        )}
+      </div>
+    </Card>
+    </div>
   );
 }
 
@@ -489,7 +542,7 @@ function DeleteSpaceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[16vh]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[16vh]" onClick={onClose}>
       <div className="w-full max-w-[460px] rounded-lg border border-err/40 bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
           <span className="grid h-7 w-7 place-items-center rounded-md border border-err/40 bg-err/10 text-err">

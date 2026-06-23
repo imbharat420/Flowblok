@@ -28,7 +28,7 @@ export function Drawer({
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
-        className="flex h-full w-[420px] flex-col border-l border-border bg-surface shadow-2xl"
+        className="flex h-full w-full max-w-[420px] flex-col border-l border-border bg-surface shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">

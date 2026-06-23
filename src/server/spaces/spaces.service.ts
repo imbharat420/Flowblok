@@ -15,8 +15,15 @@ export class SpacesService {
   }
 
   async listArchived(ownerId: string): Promise<Space[]> {
+    // Sweep anything past its retention deadline before listing the bin.
+    await this.repo.purgeExpired(ownerId);
     const all = await this.repo.findAllForOwner(ownerId);
-    return all.filter(isArchived).sort((a, b) => (a.purgeAt ?? "").localeCompare(b.purgeAt ?? ""));
+    return all.filter(isArchived).sort((a, b) => (a.purgeAt ?? "~").localeCompare(b.purgeAt ?? "~"));
+  }
+
+  // Permanently delete an archived space ("delete forever" from the bin).
+  async deleteForever(id: string): Promise<boolean> {
+    return this.repo.remove(id);
   }
 
   async getById(id: string): Promise<Space | null> {

@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/cn";
 import { useSpaces } from "@/lib/space-context";
 import type { Space, SpacePlan, SpaceStatus, SpacesStats } from "@/server/spaces/spaces.types";
+import { RETENTION_OPTIONS } from "@/server/settings/settings.types";
 import {
   Boxes,
   CircleDot,
@@ -68,18 +69,23 @@ export default function SpacesPage() {
   const [selected, setSelected] = useState<Space | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [retentionDays, setRetentionDays] = useState(30);
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [a, arc] = await Promise.all([
+    const [a, arc, settings] = await Promise.all([
       fetch("/api/spaces").then((r) => r.json()),
       fetch("/api/spaces/archived").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json()).catch(() => null),
     ]);
     setData(a);
     setArchived(arc.items ?? []);
+    if (settings && typeof settings.archiveRetentionDays === "number") setRetentionDays(settings.archiveRetentionDays);
     setLoading(false);
     refreshContext();
   }, [refreshContext]);
+
+  const retentionLabel = RETENTION_OPTIONS.find((o) => o.value === retentionDays)?.label ?? `${retentionDays} days`;
 
   useEffect(() => {
     reload();
@@ -95,6 +101,13 @@ export default function SpacesPage() {
   const restore = async (id: string) => {
     setBusyId(id);
     await fetch(`/api/spaces/${id}/restore`, { method: "POST" });
+    setBusyId(null);
+    await reload();
+  };
+  const deleteForever = async (id: string) => {
+    if (!window.confirm("Permanently delete this space? This cannot be undone.")) return;
+    setBusyId(id);
+    await fetch(`/api/spaces/${id}`, { method: "DELETE" });
     setBusyId(null);
     await reload();
   };
@@ -119,13 +132,19 @@ export default function SpacesPage() {
     { key: "plan", header: "Plan", render: (s) => <Badge tone={PLAN_TONE[s.plan]}>{s.plan}</Badge> },
     { key: "archivedAt", header: "Archived", render: (s) => <span className="nums text-[12px] text-fg-muted">{s.archivedAt ? fmtDate(s.archivedAt) : "—"}</span> },
     { key: "purgeAt", header: "Auto-deletes in", render: (s) => {
+      if (!s.purgeAt) return <Badge tone="neutral" dot>Never (Lifetime)</Badge>;
       const d = daysLeft(s.purgeAt);
       return <Badge tone={d <= 7 ? "err" : "warn"} dot>{d} day{d === 1 ? "" : "s"}</Badge>;
     } },
-    { key: "restore", header: "", align: "right", render: (s) => (
-      <Button variant="secondary" size="sm" disabled={busyId === s.id} onClick={() => restore(s.id)}>
-        {busyId === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />} Restore
-      </Button>
+    { key: "actions", header: "", align: "right", render: (s) => (
+      <div className="flex items-center justify-end gap-1.5">
+        <Button variant="secondary" size="sm" disabled={busyId === s.id} onClick={() => restore(s.id)}>
+          {busyId === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />} Restore
+        </Button>
+        <Button variant="danger" size="sm" disabled={busyId === s.id} onClick={() => deleteForever(s.id)}>
+          <Trash2 className="h-3 w-3" /> Delete
+        </Button>
+      </div>
     ) },
   ];
 
@@ -183,7 +202,11 @@ export default function SpacesPage() {
             <>
               <div className="mb-4 flex items-start gap-2 rounded-md border border-warn/30 bg-warn/5 px-3 py-2 text-[12px] text-fg-muted">
                 <Archive className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warn" />
-                Archived spaces are kept for <span className="text-fg">30 days</span>, then permanently deleted. Restore any time before the deadline.
+                {retentionDays === 0 ? (
+                  <span>Archived spaces are kept <span className="text-fg">forever</span> until you delete them manually. Change this in <span className="text-fg">Settings → General</span>.</span>
+                ) : (
+                  <span>Archived spaces are kept for <span className="text-fg">{retentionLabel}</span>, then permanently deleted. Restore any time before the deadline — or change the period in <span className="text-fg">Settings → General</span>.</span>
+                )}
               </div>
               {loading ? (
                 <SkeletonTable />
@@ -192,7 +215,7 @@ export default function SpacesPage() {
                   columns={archivedColumns}
                   rows={archived}
                   getKey={(s) => s.id}
-                  empty={<EmptyState icon={Archive} title="Nothing archived" description="Deleted spaces land here for 30 days before permanent deletion." />}
+                  empty={<EmptyState icon={Archive} title="Nothing archived" description="Deleted spaces land here as a recoverable bin before permanent deletion." />}
                 />
               )}
             </>
@@ -239,7 +262,7 @@ function CreateSpaceModal({ onClose, onDone }: { onClose: () => void; onDone: ()
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[16vh]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[16vh]" onClick={onClose}>
       <div className="w-full max-w-[440px] rounded-lg border border-border-strong bg-surface shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="border-b border-border px-4 py-3"><h2 className="text-[14px] font-medium text-fg">Create a new space</h2></div>
         <div className="space-y-3 p-4 text-[13px]">

@@ -6,7 +6,7 @@ import { DataBinder } from "./data-binder";
 import { LogicBuilder } from "./logic-builder";
 import { EventsBuilder } from "./events-builder";
 import type { LogicRule, PreviewContext } from "@/lib/logic";
-import { Paintbrush, Database, GitBranch, Shield, Zap, Search, Sparkles } from "lucide-react";
+import { Paintbrush, Database, GitBranch, Shield, Zap, Search, Sparkles, Trash2, X } from "lucide-react";
 
 export const INSPECTOR_TABS = [
   { key: "design", label: "Design", icon: Paintbrush },
@@ -30,6 +30,9 @@ export function Inspector({
   onProp,
   onBinding,
   ctx,
+  mobileOpen,
+  onMobileClose,
+  onRemove,
 }: {
   node: BlockNode | null;
   def: ComponentDef | null;
@@ -38,12 +41,49 @@ export function Inspector({
   onProp: (key: string, value: unknown) => void;
   onBinding: (b: DataBinding) => void;
   ctx: PreviewContext;
+  // Mobile bottom-sheet controls (ignored on desktop, where the panel is fixed).
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+  onRemove?: () => void;
 }) {
   const binding = node?.props?._binding as DataBinding | undefined;
 
   return (
-    <aside className="flex w-[320px] shrink-0 flex-col border-l border-border bg-surface">
-      <div className="flex items-center gap-0.5 border-b border-border px-2 py-1.5">
+    <aside
+      className={cn(
+        "flex flex-col bg-surface",
+        "lg:w-[320px] lg:shrink-0 lg:border-l lg:border-border",
+        "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[72vh] max-lg:rounded-t-2xl max-lg:border max-lg:border-border max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-300",
+        mobileOpen ? "max-lg:translate-y-0" : "max-lg:translate-y-[110%]",
+      )}
+    >
+      <div className="mx-auto mb-1 mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong lg:hidden" />
+
+      {/* mobile sheet header: title + remove + close */}
+      <div className="flex items-center justify-between border-b border-border px-3 py-2 lg:hidden">
+        <span className="truncate text-[13px] font-medium text-fg">
+          {node ? `Edit ${def?.label ?? node.component}` : "Edit block"}
+        </span>
+        <div className="flex items-center gap-1">
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-fg-muted hover:text-err"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Remove
+            </button>
+          )}
+          <button
+            onClick={onMobileClose}
+            title="Close"
+            className="grid h-7 w-7 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border px-2 py-1.5">
         {INSPECTOR_TABS.map((t) => {
           const Icon = t.icon;
           return (
@@ -52,7 +92,7 @@ export function Inspector({
               onClick={() => onActive(t.key)}
               title={t.label}
               className={cn(
-                "grid h-8 w-8 place-items-center rounded-md transition-colors",
+                "grid h-8 w-8 shrink-0 place-items-center rounded-md transition-colors",
                 active === t.key ? "bg-surface-3 text-fg" : "text-fg-muted hover:text-fg",
               )}
             >

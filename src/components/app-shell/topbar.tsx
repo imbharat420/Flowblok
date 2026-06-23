@@ -17,11 +17,13 @@ import {
   ShoppingBag,
   Boxes,
   Inbox,
+  Menu,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CommandPalette } from "./command-palette";
+import { useSidebar } from "./sidebar-context";
 import { useAuth } from "@/lib/auth-context";
 import { useSpaces } from "@/lib/space-context";
 import { ROLES, ROLE_LABEL, isSuperAdmin } from "@/lib/rbac";
@@ -50,6 +52,7 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifRead, setNotifRead] = useState(false);
   const { user, setRole } = useAuth();
+  const { setOpen: setSidebarOpen } = useSidebar();
   const { current } = useSpaces();
   // The leading breadcrumb is the active space. The legacy "Acme Digital"
   // placeholder passed by pages is dropped so a fresh/empty account shows none.
@@ -78,10 +81,18 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-bg px-5">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-bg px-3 sm:gap-3 sm:px-5">
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg lg:hidden"
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       <div className="flex min-w-0 items-center gap-2 text-[13px]">
         {crumbs.map((b) => (
-          <span key={b} className="flex items-center gap-2 text-fg-muted">
+          <span key={b} className="hidden items-center gap-2 text-fg-muted sm:flex">
             {b}
             <span className="text-fg-subtle">/</span>
           </span>
@@ -89,29 +100,30 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
         <span className="truncate font-medium text-fg">{title}</span>
       </div>
 
-      <div className="flex-1" />
+      <div className="hidden flex-1 sm:block" />
 
       <button
         onClick={() => setPaletteOpen(true)}
-        className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5 text-[12px] text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-[12.5px] text-fg-muted transition-colors hover:border-border-strong hover:text-fg sm:max-w-[280px] sm:flex-none sm:px-2.5 sm:py-1.5 sm:text-[12px]"
       >
-        <Search className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Search or run a command</span>
-        <kbd className="ml-2 rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle">
+        <Search className="h-4 w-4 shrink-0 sm:h-3.5 sm:w-3.5" />
+        <span className="truncate sm:hidden">Search…</span>
+        <span className="hidden truncate sm:inline">Search or run a command</span>
+        <kbd className="ml-auto hidden rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle sm:ml-2 sm:inline-block">
           ⌘K
         </kbd>
       </button>
 
       <button
         onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-        className="grid h-8 w-8 place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg"
+        className="hidden h-8 w-8 place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg sm:grid"
         aria-label="Toggle theme"
       >
         {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
 
       {/* Notifications */}
-      <div className="relative">
+      <div className="relative hidden sm:block">
         <button
           onClick={() => {
             setNotifOpen((v) => !v);
@@ -157,10 +169,10 @@ export function Topbar({ title, breadcrumb }: { title: string; breadcrumb?: stri
       <div className="relative">
         <button
           onClick={() => setCreateOpen((v) => !v)}
-          className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent-hover"
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-2.5 py-2 text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent-hover sm:px-3 sm:py-1.5"
         >
-          <Plus className="h-3.5 w-3.5" />
-          Create
+          <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+          <span className="hidden sm:inline">Create</span>
         </button>
         {createOpen && (
           <>

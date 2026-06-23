@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/app-shell/sidebar";
+import { SidebarProvider } from "@/components/app-shell/sidebar-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { SpaceProvider } from "@/lib/space-context";
 import { getSession } from "@/server/auth/session";
@@ -23,10 +24,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AuthProvider initialUser={initialUser}>
       <SpaceProvider>
-        <div className="flex h-screen overflow-hidden bg-bg">
-          <Sidebar />
-          <div className="flex min-w-0 flex-1 flex-col">{children}</div>
-        </div>
+        <SidebarProvider>
+          <div className="flex h-screen overflow-hidden bg-bg">
+            <Sidebar />
+            <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+          </div>
+        </SidebarProvider>
       </SpaceProvider>
     </AuthProvider>
   );

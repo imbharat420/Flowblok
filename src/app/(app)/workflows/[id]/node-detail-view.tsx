@@ -45,37 +45,37 @@ export function NodeDetailView({
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
-        <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-surface-2 text-fg-muted">
+        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 sm:gap-2.5 sm:px-4">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-surface-2 text-fg-muted">
             <Icon className="h-4 w-4" />
           </span>
           <input
             value={node.name}
             onChange={(e) => onChangeName(e.target.value)}
-            className="min-w-0 max-w-[280px] bg-transparent text-[14px] font-medium text-fg outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[14px] font-medium text-fg outline-none sm:max-w-[280px] sm:flex-none"
           />
-          <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle">
+          <span className="hidden shrink-0 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-fg-subtle sm:inline-block">
             {nodeType?.label ?? node.type}
           </span>
-          <div className="flex-1" />
+          <div className="hidden flex-1 sm:block" />
           <button
             onClick={onRun}
             disabled={running}
-            className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[12px] font-medium text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-60"
+            className="flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-[12px] font-medium text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-60 sm:px-3"
           >
             {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-            Execute step
+            <span className="hidden sm:inline">Execute step</span>
           </button>
-          <button onClick={onClose} className="text-fg-muted hover:text-fg" aria-label="Close">
+          <button onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* three panes */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[1fr_1.3fr_1fr]">
+        {/* three panes — stacked & height-split on mobile, side-by-side on desktop */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-3 md:grid-cols-[1fr_1.3fr_1fr] md:grid-rows-none">
           <Pane title="Input" items={runLog?.inputSample} empty="No input yet — run to populate" />
 
-          <div className="flex min-h-0 flex-col border-border md:border-x">
+          <div className="flex min-h-0 flex-col border-y border-border md:border-x md:border-y-0">
             <div className="flex shrink-0 gap-1 border-b border-border px-3 py-2">
               {(["parameters", "settings"] as const).map((t) => (
                 <button

@@ -2,6 +2,7 @@
 // HTTP. Pure and reusable from API routes, RSC, or workflows.
 
 import { SettingsRepository, settingsRepository } from "./settings.repository";
+import { getRetentionDays, setRetentionDays } from "./retention";
 import type {
   DeveloperToggle,
   DomainEntry,
@@ -22,7 +23,16 @@ export class SettingsService {
       plans: this.repo.listPlans(),
       domains: this.repo.listDomains(),
       toggles: this.repo.listToggles(),
+      archiveRetentionDays: getRetentionDays(),
     };
+  }
+
+  archiveRetentionDays(): number {
+    return getRetentionDays();
+  }
+
+  setArchiveRetentionDays(days: number): number {
+    return setRetentionDays(days);
   }
 
   general(): SpaceGeneral {

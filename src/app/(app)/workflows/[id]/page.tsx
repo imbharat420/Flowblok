@@ -8,11 +8,13 @@ import { getIcon } from "@/lib/icon";
 import type { NodeKind, NodeParam, NodeType, Workflow, WorkflowNode, WorkflowRun, WorkflowStatus } from "@/lib/types";
 import { SUB_PORTS, SUB_PORT_LABEL, SUB_NODE_PORT, isSubPort, type SubPort } from "@/lib/subnodes";
 import { visibleParams } from "@/lib/params";
-import { ChevronLeft, ChevronRight, ArrowLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowLeft, Play, Plus, Loader2, Save, Check, Trash2, Spline, X, CircleAlert, ScrollText, SlidersHorizontal, LayoutGrid, ZoomIn, ZoomOut, Maximize, Map as MapIcon, Settings2, MoreHorizontal, Power, PowerOff, Maximize2, Pencil, Replace, Pin, PinOff, Copy, CopyPlus, Wand2, Workflow as WorkflowIcon, BoxSelect, SquareX, StickyNote } from "lucide-react";
 import { NodeDetailView } from "./node-detail-view";
 
 const NODE_W = 184;
 const NODE_H = 60;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 1.6;
 
 const KIND_COLOR: Record<NodeKind, string> = {
   trigger: "#22c55e",
@@ -102,6 +104,34 @@ export default function WorkflowCanvasPage() {
   const [savedFlash, setSavedFlash] = useState(false);
   const [lastRun, setLastRun] = useState<WorkflowRun | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  // Which panel is shown as a bottom sheet on mobile (Canva-style); desktop
+  // shows both rails permanently and ignores this.
+  const [mobileSheet, setMobileSheet] = useState<"palette" | "inspector" | null>(null);
+  // Canvas zoom + minimap (touch pinch, buttons, fit-to-view).
+  const [zoom, setZoom] = useState(1);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [view, setView] = useState({ sl: 0, st: 0, vw: 0, vh: 0 });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // The node whose ⋯ overflow menu is open (from the on-focus action toolbar).
+  const [nodeMenu, setNodeMenu] = useState<string | null>(null);
+  // Canvas appearance / behaviour settings.
+  const [canvasOpts, setCanvasOpts] = useState({ dashed: false, snap: false, grid: "dots" as "dots" | "lines" | "none" });
+  const zoomRef = useRef(1);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pinch = useRef<{ lastDist: number; lastMidX: number; lastMidY: number } | null>(null);
+  // Drag-to-pan the empty canvas (hand tool); snapRef lets the global move
+  // handler read the live snap setting without re-subscribing.
+  const pan = useRef<{ x: number; y: number; sl: number; st: number } | null>(null);
+  const snapRef = useRef(false);
+  useEffect(() => {
+    snapRef.current = canvasOpts.snap;
+  }, [canvasOpts.snap]);
+  // Close the node ⋯ menu whenever the selection changes (incl. deselect).
+  useEffect(() => {
+    setNodeMenu(null);
+  }, [selected]);
+  // Always-fresh completeConnect for the global touch listeners (it reads wf).
+  const completeConnectRef = useRef<(to: string) => void>(() => {});
   const [ndvNode, setNdvNode] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [creds, setCreds] = useState<Array<{ id: string; name: string; type: string }>>([]);
@@ -114,6 +144,8 @@ export default function WorkflowCanvasPage() {
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [linkPos, setLinkPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; offX: number; offY: number; el: HTMLElement } | null>(null);
+  // Resizing a sticky note (corner handle).
+  const resize = useRef<{ id: string; startX: number; startY: number; w: number; h: number } | null>(null);
   const connect = useRef<{
     from: string;
     port: string;
@@ -165,33 +197,88 @@ export default function WorkflowCanvasPage() {
 
   // ---- node dragging + connection dragging (shared global listeners) ----
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    // Shared move logic for both mouse and a single dragging finger.
+    const moveAt = (clientX: number, clientY: number) => {
+      const rz = resize.current;
+      if (rz) {
+        const z = zoomRef.current;
+        const w = Math.max(140, rz.w + (clientX - rz.startX) / z);
+        const h = Math.max(90, rz.h + (clientY - rz.startY) / z);
+        setWf((prev) =>
+          prev ? { ...prev, nodes: prev.nodes.map((n) => (n.id === rz.id ? { ...n, config: { ...(n.config ?? {}), w, h } } : n)) } : prev,
+        );
+        return;
+      }
       const d = drag.current;
       if (d) {
-        // Capture the ref locally — mouseup may null drag.current before this
+        // Capture the ref locally — release may null drag.current before this
         // updater runs, so the closure must not read the live ref.
         const rect = d.el.getBoundingClientRect();
-        const x = Math.max(0, e.clientX - rect.left - d.offX);
-        const y = Math.max(0, e.clientY - rect.top - d.offY);
+        const z = zoomRef.current;
+        let x = Math.max(0, (clientX - rect.left) / z - d.offX);
+        let y = Math.max(0, (clientY - rect.top) / z - d.offY);
+        if (snapRef.current) {
+          const G = 20;
+          x = Math.round(x / G) * G;
+          y = Math.round(y / G) * G;
+        }
         setWf((prev) =>
           prev ? { ...prev, nodes: prev.nodes.map((n) => (n.id === d.id ? { ...n, x, y } : n)) } : prev,
         );
       } else if (connect.current) {
         const rect = connect.current.el.getBoundingClientRect();
-        setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        const z = zoomRef.current;
+        setLinkPos({ x: (clientX - rect.left) / z, y: (clientY - rect.top) / z });
       }
     };
-    const onUp = () => {
+    const reset = () => {
       drag.current = null;
       connect.current = null;
+      pan.current = null;
+      resize.current = null;
       setConnectFrom(null);
       setLinkPos(null);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    const onMouseMove = (e: MouseEvent) => {
+      if (pan.current) {
+        const el = scrollRef.current;
+        if (el) {
+          el.scrollLeft = pan.current.sl - (e.clientX - pan.current.x);
+          el.scrollTop = pan.current.st - (e.clientY - pan.current.y);
+        }
+        return;
+      }
+      moveAt(e.clientX, e.clientY);
+    };
+    // Touch: only intercept when dragging a node or wiring a connection (one
+    // finger). Empty-canvas pan + two-finger pinch are left to native / pinch.
+    const onTouchMove = (e: TouchEvent) => {
+      if ((drag.current || connect.current || resize.current) && e.touches.length === 1) {
+        e.preventDefault();
+        moveAt(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      // Wiring by touch: drop onto whatever node is under the finger.
+      if (connect.current) {
+        const t = e.changedTouches[0];
+        const hit = t && (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest("[data-node-id]");
+        const id = hit?.getAttribute("data-node-id");
+        if (id && connect.current.from !== id) completeConnectRef.current(id);
+      }
+      reset();
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", reset);
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("touchcancel", reset);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", reset);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", reset);
     };
   }, []);
 
@@ -231,31 +318,49 @@ export default function WorkflowCanvasPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selected, selectedConn, deleteNode, deleteConn]);
 
-  const startDrag = (e: React.MouseEvent, n: WorkflowNode) => {
+  // Pull a single screen point out of a mouse or touch event.
+  const ptOf = (e: React.MouseEvent | React.TouchEvent) =>
+    "touches" in e ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+
+  const startDrag = (e: React.MouseEvent | React.TouchEvent, n: WorkflowNode) => {
+    const p = ptOf(e);
     const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
     const rect = canvas.getBoundingClientRect();
-    drag.current = { id: n.id, offX: e.clientX - rect.left - n.x, offY: e.clientY - rect.top - n.y, el: canvas };
+    const z = zoomRef.current;
+    drag.current = { id: n.id, offX: (p.x - rect.left) / z - n.x, offY: (p.y - rect.top) / z - n.y, el: canvas };
     setSelected(n.id);
     setSelectedConn(null);
   };
 
-  const startConnect = (e: React.MouseEvent, n: WorkflowNode, port = "main") => {
+  const startConnect = (e: React.MouseEvent | React.TouchEvent, n: WorkflowNode, port = "main") => {
     e.stopPropagation(); // don't start a node drag
+    const p = ptOf(e);
     const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
     const rect = canvas.getBoundingClientRect();
     connect.current = { from: n.id, port, el: canvas };
     setConnectFrom(n.id);
-    setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    const z = zoomRef.current;
+    setLinkPos({ x: (p.x - rect.left) / z, y: (p.y - rect.top) / z });
   };
 
   // Drag from an AI Agent sub-port (Chat Model / Memory / Tool) onto a sub-node.
-  const startSubConnect = (e: React.MouseEvent, agent: WorkflowNode, subPort: SubPort) => {
+  const startSubConnect = (e: React.MouseEvent | React.TouchEvent, agent: WorkflowNode, subPort: SubPort) => {
     e.stopPropagation();
+    const p = ptOf(e);
     const canvas = (e.currentTarget as HTMLElement).closest("[data-canvas]") as HTMLElement;
     const rect = canvas.getBoundingClientRect();
     connect.current = { from: agent.id, port: "sub", el: canvas, subTarget: { agentId: agent.id, subPort } };
     setConnectFrom(agent.id);
-    setLinkPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    const z = zoomRef.current;
+    setLinkPos({ x: (p.x - rect.left) / z, y: (p.y - rect.top) / z });
+  };
+
+  // Begin resizing a sticky note from its corner handle (mouse or touch).
+  const startResize = (e: React.MouseEvent | React.TouchEvent, n: WorkflowNode) => {
+    e.stopPropagation();
+    const p = ptOf(e);
+    resize.current = { id: n.id, startX: p.x, startY: p.y, w: Number(n.config?.w ?? 240), h: Number(n.config?.h ?? 150) };
+    setSelected(n.id);
   };
 
   const completeConnect = (to: string) => {
@@ -293,6 +398,7 @@ export default function WorkflowCanvasPage() {
       return { ...prev, connections: [...prev.connections, conn] };
     });
   };
+  completeConnectRef.current = completeConnect;
 
   const addNode = (t: NodeType, overrides?: Record<string, unknown>) => {
     if (!wf) return;
@@ -381,6 +487,93 @@ export default function WorkflowCanvasPage() {
     );
   };
 
+  const duplicateNode = (nodeId: string) => {
+    setWf((prev) => {
+      if (!prev) return prev;
+      const src = prev.nodes.find((n) => n.id === nodeId);
+      if (!src) return prev;
+      const nid = `n_${Date.now().toString(36)}`;
+      const copy: WorkflowNode = { ...src, id: nid, name: `${src.name} copy`, x: src.x + 40, y: src.y + 40, config: { ...(src.config ?? {}) } };
+      return { ...prev, nodes: [...prev.nodes, copy] };
+    });
+  };
+
+  const copyNode = (nodeId: string) => {
+    const n = wf?.nodes.find((x) => x.id === nodeId);
+    if (n) navigator.clipboard?.writeText(JSON.stringify(n, null, 2)).catch(() => {});
+  };
+
+  // "Tidy up": layered left-to-right auto-layout by longest-path depth (DAG).
+  const tidyUp = () => {
+    setWf((prev) => {
+      if (!prev || prev.nodes.length === 0) return prev;
+      const depth = new Map<string, number>(prev.nodes.map((n) => [n.id, 0]));
+      let changed = true;
+      let guard = 0;
+      while (changed && guard++ < 2000) {
+        changed = false;
+        for (const c of prev.connections) {
+          if (isSubPort(c.toPort)) continue;
+          const d = (depth.get(c.from) ?? 0) + 1;
+          if (d > (depth.get(c.to) ?? 0)) {
+            depth.set(c.to, d);
+            changed = true;
+          }
+        }
+      }
+      const cols = new Map<number, string[]>();
+      for (const n of prev.nodes) {
+        const d = depth.get(n.id) ?? 0;
+        if (!cols.has(d)) cols.set(d, []);
+        cols.get(d)!.push(n.id);
+      }
+      const GX = 260;
+      const GY = 120;
+      const X0 = 80;
+      const Y0 = 80;
+      const pos = new Map<string, { x: number; y: number }>();
+      for (const [d, ids] of cols) ids.forEach((nid, i) => pos.set(nid, { x: X0 + d * GX, y: Y0 + i * GY }));
+      return { ...prev, nodes: prev.nodes.map((n) => (pos.has(n.id) ? { ...n, ...pos.get(n.id)! } : n)) };
+    });
+  };
+
+  // Add a sticky note at the centre of the current viewport (button / "N" key).
+  const addNote = useCallback(() => {
+    const el = scrollRef.current;
+    const z = zoomRef.current;
+    let x = 120;
+    let y = 120;
+    if (el) {
+      x = (el.scrollLeft + el.clientWidth / 2) / z - 120;
+      y = (el.scrollTop + el.clientHeight / 2) / z - 75;
+    }
+    const id = `n_${Date.now().toString(36)}`;
+    const node: WorkflowNode = {
+      id,
+      type: "sticky_note",
+      name: "Note",
+      x: Math.max(0, x),
+      y: Math.max(0, y),
+      config: { color: "yellow", content: "", w: 240, h: 150 },
+    };
+    setWf((prev) => (prev ? { ...prev, nodes: [...prev.nodes, node] } : prev));
+    setSelected(id);
+    setEditingNote(id);
+  }, []);
+
+  // Keyboard shortcut: "N" adds a sticky note (when not typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "n" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = document.activeElement?.tagName;
+      if (el === "INPUT" || el === "TEXTAREA" || el === "SELECT") return;
+      e.preventDefault();
+      addNote();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [addNote]);
+
   // Real execution: persist the canvas, run it through the engine, then replay
   // the per-node run log visually.
   const run = async () => {
@@ -463,6 +656,141 @@ export default function WorkflowCanvasPage() {
     return { w: Math.max(1200, maxX + 300), h: Math.max(640, maxY + 200) };
   }, [wf]);
 
+  // minimap geometry (preserves the canvas aspect ratio within a small box)
+  const mm = useMemo(() => {
+    const MAXW = 148;
+    const MAXH = 96;
+    const s = Math.min(MAXW / Math.max(1, canvasSize.w), MAXH / Math.max(1, canvasSize.h));
+    return { s, w: Math.round(canvasSize.w * s), h: Math.round(canvasSize.h * s) };
+  }, [canvasSize]);
+
+  // Sync the minimap viewport rectangle from the scroll container.
+  const syncView = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setView({ sl: el.scrollLeft, st: el.scrollTop, vw: el.clientWidth, vh: el.clientHeight });
+  }, []);
+
+  // Zoom around a focal point (defaults to viewport centre), keeping that point
+  // fixed under the cursor/fingers. Scroll is corrected after the sizer resizes.
+  const applyZoom = useCallback(
+    (next: number, focal?: { x: number; y: number }) => {
+      const el = scrollRef.current;
+      const target = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+      const prev = zoomRef.current;
+      if (!el) {
+        zoomRef.current = target;
+        setZoom(target);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const fx = focal ? focal.x - rect.left : el.clientWidth / 2;
+      const fy = focal ? focal.y - rect.top : el.clientHeight / 2;
+      const cx = (el.scrollLeft + fx) / prev;
+      const cy = (el.scrollTop + fy) / prev;
+      zoomRef.current = target;
+      setZoom(target);
+      requestAnimationFrame(() => {
+        el.scrollLeft = cx * target - fx;
+        el.scrollTop = cy * target - fy;
+        syncView();
+      });
+    },
+    [syncView],
+  );
+
+  const fitView = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || !wf || wf.nodes.length === 0) return;
+    const minX = Math.min(...wf.nodes.map((n) => n.x));
+    const minY = Math.min(...wf.nodes.map((n) => n.y));
+    const maxX = Math.max(...wf.nodes.map((n) => n.x + NODE_W));
+    const maxY = Math.max(...wf.nodes.map((n) => n.y + NODE_H));
+    const pad = 56;
+    const z = Math.min(
+      ZOOM_MAX,
+      Math.max(
+        ZOOM_MIN,
+        Math.min(el.clientWidth / (maxX - minX + pad * 2), el.clientHeight / (maxY - minY + pad * 2)),
+      ),
+    );
+    zoomRef.current = z;
+    setZoom(z);
+    requestAnimationFrame(() => {
+      el.scrollLeft = minX * z - pad;
+      el.scrollTop = minY * z - pad;
+      syncView();
+    });
+  }, [wf, syncView]);
+
+  // Pinch-to-zoom (two fingers). Attached natively so we can preventDefault and
+  // stop the page from zooming; one-finger pan stays native via touch-action.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const dist = (e: TouchEvent) =>
+      Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
+    const midOf = (e: TouchEvent) => ({
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+    });
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const m = midOf(e);
+        pinch.current = { lastDist: dist(e), lastMidX: m.x, lastMidY: m.y };
+      }
+    };
+    // Two-finger gesture = pan (midpoint movement) + zoom (distance change).
+    // A swipe keeps the finger distance ~constant, so the deadzone makes it pan
+    // rather than zoom erratically; a pinch changes distance and zooms.
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !pinch.current) return;
+      e.preventDefault();
+      const elc = scrollRef.current;
+      if (!elc) return;
+      const rect = elc.getBoundingClientRect();
+      const m = midOf(e);
+      const d = dist(e);
+      const prev = zoomRef.current;
+      const target =
+        Math.abs(d - pinch.current.lastDist) > 2
+          ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev * (d / pinch.current.lastDist)))
+          : prev;
+      const fx = m.x - rect.left;
+      const fy = m.y - rect.top;
+      const cx = (elc.scrollLeft + fx) / prev;
+      const cy = (elc.scrollTop + fy) / prev;
+      const panDX = m.x - pinch.current.lastMidX;
+      const panDY = m.y - pinch.current.lastMidY;
+      pinch.current.lastDist = d;
+      pinch.current.lastMidX = m.x;
+      pinch.current.lastMidY = m.y;
+      zoomRef.current = target;
+      setZoom(target);
+      requestAnimationFrame(() => {
+        elc.scrollLeft = cx * target - fx - panDX;
+        elc.scrollTop = cy * target - fy - panDY;
+        syncView();
+      });
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinch.current = null;
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, [syncView, wf?.id]);
+
+  // Initialise the minimap viewport once the canvas is mounted.
+  useEffect(() => {
+    syncView();
+  }, [syncView, wf?.id, canvasSize.w, canvasSize.h]);
+
   if (!wf) {
     return <div className="grid flex-1 place-items-center text-[13px] text-fg-muted">Loading workflow…</div>;
   }
@@ -529,10 +857,24 @@ export default function WorkflowCanvasPage() {
     return [...m.entries()].sort((a, b) => idx(a[0]) - idx(b[0]));
   })();
 
+  const gridBg: React.CSSProperties =
+    canvasOpts.grid === "lines"
+      ? {
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
+          backgroundSize: "22px 22px",
+        }
+      : canvasOpts.grid === "dots"
+        ? {
+            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+          }
+        : {};
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* toolbar */}
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-bg px-4">
+      <div className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-bg px-3 py-2 sm:px-4 md:h-14 md:flex-nowrap md:gap-3 md:py-0">
         <Link href="/workflows" className="flex items-center gap-1 text-[13px] text-fg-muted hover:text-fg">
           <ChevronLeft className="h-4 w-4" /> Workflows
         </Link>
@@ -577,9 +919,22 @@ export default function WorkflowCanvasPage() {
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 lg:overflow-x-auto">
+        {/* shared backdrop for the mobile bottom sheets */}
+        {mobileSheet && (
+          <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setMobileSheet(null)} />
+        )}
+
         {/* node palette — n8n-style drill-down ("What happens next?") */}
-        <div className="flex w-[320px] shrink-0 flex-col overflow-hidden border-r border-border bg-surface">
+        <div
+          className={cn(
+            "flex flex-col overflow-hidden bg-surface",
+            "lg:w-[320px] lg:shrink-0 lg:border-r lg:border-border",
+            "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[78vh] max-lg:rounded-t-2xl max-lg:border max-lg:border-border max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-300",
+            mobileSheet === "palette" ? "max-lg:translate-y-0" : "max-lg:translate-y-[110%]",
+          )}
+        >
+          <div className="mx-auto mb-0.5 mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong lg:hidden" />
           {/* header */}
           <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
             {!q && (palGroup || palActions) && (
@@ -587,9 +942,16 @@ export default function WorkflowCanvasPage() {
                 <ArrowLeft className="h-4 w-4" />
               </button>
             )}
-            <span className="truncate text-[14px] font-semibold text-fg">
+            <span className="flex-1 truncate text-[14px] font-semibold text-fg">
               {q ? "Search" : palActions ? actionType?.label : palGroup ? groupMeta?.label : "What happens next?"}
             </span>
+            <button
+              onClick={() => setMobileSheet(null)}
+              title="Close"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg lg:hidden"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
           {/* search */}
           <div className="shrink-0 px-3 pt-3">
@@ -680,21 +1042,35 @@ export default function WorkflowCanvasPage() {
         </div>
 
         {/* canvas */}
+        <div className="relative flex-1 lg:min-w-[320px]">
         <div
-          className="relative flex-1 overflow-auto bg-[#0a0a0a]"
+          ref={scrollRef}
+          onScroll={syncView}
+          className="absolute inset-0 cursor-grab overflow-auto bg-[#0a0a0a] active:cursor-grabbing"
+          style={{ touchAction: "pan-x pan-y" }}
+          onMouseDown={(e) => {
+            // Background press → start panning (nodes stopPropagation, so this
+            // only fires on empty canvas).
+            if (e.button !== 0) return;
+            const el = scrollRef.current;
+            if (!el) return;
+            pan.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop };
+          }}
           onClick={() => {
             setSelected(null);
             setSelectedConn(null);
           }}
         >
+          <div style={{ width: canvasSize.w * zoom, height: canvasSize.h * zoom }}>
           <div
             data-canvas
             className="relative"
             style={{
               width: canvasSize.w,
               height: canvasSize.h,
-              backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
-              backgroundSize: "22px 22px",
+              transform: `scale(${zoom})`,
+              transformOrigin: "top left",
+              ...gridBg,
             }}
           >
             {/* connections */}
@@ -776,6 +1152,7 @@ export default function WorkflowCanvasPage() {
                                 : "rgba(255,255,255,0.18)"
                       }
                       strokeWidth={isSel ? 2.5 : active ? 2 : 1.5}
+                      strokeDasharray={canvasOpts.dashed ? "6 4" : undefined}
                       style={{ pointerEvents: "none" }}
                     />
                   </g>
@@ -801,10 +1178,18 @@ export default function WorkflowCanvasPage() {
                 const palette = NOTE_COLORS[String(n.config?.color ?? "yellow")] ?? NOTE_COLORS.yellow;
                 const editing = editingNote === n.id;
                 const content = String(n.config?.content ?? "");
+                const noteW = Number(n.config?.w ?? 240);
+                const noteH = Number(n.config?.h ?? 150);
+                const isSel = selected === n.id;
                 return (
                   <div
                     key={n.id}
                     onMouseDown={(e) => {
+                      if (editing) return;
+                      e.stopPropagation();
+                      startDrag(e, n);
+                    }}
+                    onTouchStart={(e) => {
                       if (editing) return;
                       e.stopPropagation();
                       startDrag(e, n);
@@ -815,22 +1200,64 @@ export default function WorkflowCanvasPage() {
                       setEditingNote(n.id);
                     }}
                     className={cn(
-                      "absolute select-none rounded-lg border p-3",
-                      selected === n.id ? "ring-1 ring-accent" : "",
-                      editing ? "cursor-text" : "cursor-grab active:cursor-grabbing",
+                      "absolute rounded-lg border p-3",
+                      isSel ? "z-10 ring-1 ring-accent" : "",
+                      editing ? "cursor-text" : "cursor-grab touch-none select-none active:cursor-grabbing",
                     )}
-                    style={{ left: n.x, top: n.y, width: 240, minHeight: 150, background: palette.bg, borderColor: palette.border }}
+                    style={{ left: n.x, top: n.y, width: noteW, height: noteH, background: palette.bg, borderColor: palette.border }}
                   >
+                    {/* on-focus note toolbar: colours + edit + delete */}
+                    {isSel && !editing && (
+                      <div
+                        className="absolute bottom-full left-0 z-30 mb-1.5 flex items-center gap-1 rounded-lg border border-border-strong bg-surface p-1 shadow-xl"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {Object.keys(NOTE_COLORS).map((c) => (
+                          <button
+                            key={c}
+                            title={c}
+                            onClick={() => setNodeConfig(n.id, "color", c)}
+                            className={cn(
+                              "h-5 w-5 rounded-full border border-black/20 transition-transform hover:scale-110",
+                              String(n.config?.color ?? "yellow") === c && "ring-2 ring-accent ring-offset-1 ring-offset-surface",
+                            )}
+                            style={{ background: NOTE_COLORS[c].border }}
+                          />
+                        ))}
+                        <div className="mx-0.5 h-4 w-px bg-border" />
+                        <button title="Edit text" onClick={() => setEditingNote(n.id)} className="grid h-6 w-6 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg">
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button title="Delete" onClick={() => deleteNode(n.id)} className="grid h-6 w-6 place-items-center rounded text-fg-muted hover:bg-err/10 hover:text-err">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+
                     {editing ? (
                       <textarea
                         autoFocus
                         value={content}
                         onChange={(e) => setNodeConfig(n.id, "content", e.target.value)}
                         onBlur={() => setEditingNote(null)}
-                        className="h-[124px] w-full resize-none bg-transparent text-[12px] leading-relaxed text-fg outline-none"
+                        className="h-full w-full resize-none bg-transparent text-[12px] leading-relaxed text-fg outline-none"
                       />
                     ) : (
-                      <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-fg">{content}</p>
+                      <p className="h-full overflow-hidden whitespace-pre-wrap break-words text-[12px] leading-relaxed text-fg">
+                        {content || <span className="text-fg-subtle">Double-tap to edit…</span>}
+                      </p>
+                    )}
+
+                    {/* resize handle */}
+                    {isSel && !editing && (
+                      <div
+                        title="Resize"
+                        onMouseDown={(e) => startResize(e, n)}
+                        onTouchStart={(e) => startResize(e, n)}
+                        className="absolute -bottom-1.5 -right-1.5 h-4 w-4 cursor-nwse-resize touch-none rounded-sm border border-border-strong bg-surface"
+                      />
                     )}
                   </div>
                 );
@@ -845,10 +1272,32 @@ export default function WorkflowCanvasPage() {
               const color = KIND_COLOR[t?.kind ?? "action"];
               const isRun = runningId === n.id;
               const isDone = doneIds.has(n.id);
+              const disabled = Boolean(n.config?._disabled);
+              const pinned = Boolean(n.config?._pinned);
+              const menuItems: Array<{ icon: typeof Play; label: string; onClick: () => void; danger?: boolean; disabled?: boolean; divider?: boolean }> = [
+                { icon: Maximize2, label: "Open", onClick: () => setNdvNode(n.id) },
+                { icon: Play, label: "Execute step", onClick: () => run() },
+                { icon: Pencil, label: "Rename", onClick: () => setNdvNode(n.id) },
+                { icon: Replace, label: "Replace", onClick: () => { setMobileSheet("palette"); setPalGroup(null); setPalActions(null); } },
+                { icon: disabled ? Power : PowerOff, label: disabled ? "Activate" : "Deactivate", onClick: () => setNodeConfig(n.id, "_disabled", !disabled) },
+                { icon: pinned ? PinOff : Pin, label: pinned ? "Unpin" : "Pin", onClick: () => setNodeConfig(n.id, "_pinned", !pinned) },
+                { icon: Copy, label: "Copy", onClick: () => copyNode(n.id) },
+                { icon: CopyPlus, label: "Duplicate", onClick: () => duplicateNode(n.id) },
+                { icon: Wand2, label: "Tidy up workflow", onClick: () => tidyUp(), divider: true },
+                { icon: WorkflowIcon, label: "Convert to sub-workflow", onClick: () => {}, disabled: true },
+                { icon: BoxSelect, label: "Select all", onClick: () => {}, disabled: true },
+                { icon: SquareX, label: "Clear selection", onClick: () => { setSelected(null); setSelectedConn(null); } },
+                { icon: Trash2, label: "Delete", onClick: () => deleteNode(n.id), danger: true, divider: true },
+              ];
               return (
                 <div
                   key={n.id}
+                  data-node-id={n.id}
                   onMouseDown={(e) => {
+                    e.stopPropagation();
+                    startDrag(e, n);
+                  }}
+                  onTouchStart={(e) => {
                     e.stopPropagation();
                     startDrag(e, n);
                   }}
@@ -861,17 +1310,81 @@ export default function WorkflowCanvasPage() {
                     setNdvNode(n.id);
                   }}
                   className={cn(
-                    "absolute cursor-grab select-none rounded-lg border bg-[#141414] active:cursor-grabbing",
-                    selected === n.id ? "border-accent" : "border-[rgba(255,255,255,0.12)]",
+                    "absolute cursor-grab touch-none select-none rounded-lg border bg-[#141414] transition-shadow active:cursor-grabbing",
+                    selected === n.id ? "z-10 border-accent" : "border-[rgba(255,255,255,0.12)]",
+                    disabled && "opacity-50",
                   )}
                   style={{
                     left: n.x,
                     top: n.y,
                     width: NODE_W,
                     height: NODE_H,
-                    boxShadow: isRun ? `0 0 0 2px ${color}, 0 0 22px ${color}66` : undefined,
+                    boxShadow: isRun
+                      ? `0 0 0 2px ${color}, 0 0 22px ${color}66`
+                      : selected === n.id
+                        ? "0 0 0 2px var(--accent), 0 0 0 6px rgba(37,99,235,0.20), 0 12px 32px rgba(0,0,0,0.55)"
+                        : undefined,
                   }}
                 >
+                  {/* on-focus action toolbar (n8n-style): quick actions + ⋯ menu */}
+                  {selected === n.id && (
+                    <div
+                      className="absolute bottom-full left-0 z-30 mb-1.5 flex items-center gap-0.5 rounded-lg border border-border-strong bg-surface p-0.5 shadow-xl"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <NodeTBtn title="Execute step" onClick={() => run()}><Play className="h-3.5 w-3.5" /></NodeTBtn>
+                      <NodeTBtn
+                        title={disabled ? "Activate step" : "Deactivate step"}
+                        active={disabled}
+                        onClick={() => setNodeConfig(n.id, "_disabled", !disabled)}
+                      >
+                        {disabled ? <Power className="h-3.5 w-3.5" /> : <PowerOff className="h-3.5 w-3.5" />}
+                      </NodeTBtn>
+                      <NodeTBtn title="Delete" danger onClick={() => deleteNode(n.id)}><Trash2 className="h-3.5 w-3.5" /></NodeTBtn>
+                      <div className="mx-0.5 h-4 w-px bg-border" />
+                      <div className="relative">
+                        <NodeTBtn title="More actions" active={nodeMenu === n.id} onClick={() => setNodeMenu((m) => (m === n.id ? null : n.id))}>
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </NodeTBtn>
+                        {nodeMenu === n.id && (
+                          <div className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border-strong bg-surface p-1 shadow-2xl">
+                            {menuItems.map((it, i) => {
+                              const Ico = it.icon;
+                              return (
+                                <button
+                                  key={i}
+                                  disabled={it.disabled}
+                                  onClick={() => {
+                                    if (it.disabled) return;
+                                    it.onClick();
+                                    setNodeMenu(null);
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[12.5px]",
+                                    it.divider && "mt-1 border-t border-border pt-2",
+                                    it.disabled
+                                      ? "cursor-not-allowed text-fg-subtle/50"
+                                      : it.danger
+                                        ? "text-err hover:bg-err/10"
+                                        : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+                                  )}
+                                >
+                                  <Ico className="h-3.5 w-3.5 shrink-0" /> {it.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {pinned && (
+                    <span className="absolute -right-1.5 -top-1.5 z-10 grid h-4 w-4 place-items-center rounded-full bg-accent text-accent-fg">
+                      <Pin className="h-2.5 w-2.5" />
+                    </span>
+                  )}
                   <div className="flex h-full items-center gap-2.5 px-3">
                     <span
                       className="grid h-8 w-8 shrink-0 place-items-center rounded-md"
@@ -891,8 +1404,9 @@ export default function WorkflowCanvasPage() {
                       key={p.port}
                       title={p.port === "main" ? "Drag to connect" : `${p.port} branch`}
                       onMouseDown={(e) => startConnect(e, n, p.port)}
+                      onTouchStart={(e) => startConnect(e, n, p.port)}
                       style={{ top: `${p.topPct}%`, background: p.color }}
-                      className="absolute -right-1.5 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-[#0a0a0a] hover:brightness-125"
+                      className="absolute -right-1.5 h-3 w-3 -translate-y-1/2 cursor-crosshair touch-none rounded-full border-2 border-[#0a0a0a] after:absolute after:-inset-2.5 after:content-[''] hover:brightness-125"
                     />
                   ))}
                   {/* branch labels for multi-output nodes */}
@@ -917,7 +1431,8 @@ export default function WorkflowCanvasPage() {
                           <button
                             title={`Attach ${SUB_PORT_LABEL[sp]}`}
                             onMouseDown={(e) => startSubConnect(e, n, sp)}
-                            className="cursor-crosshair"
+                            onTouchStart={(e) => startSubConnect(e, n, sp)}
+                            className="relative cursor-crosshair touch-none after:absolute after:-inset-2.5 after:content-['']"
                           >
                             <span className="block h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0a] bg-[#a78bfa] hover:brightness-125" />
                           </button>
@@ -951,8 +1466,10 @@ export default function WorkflowCanvasPage() {
               );
             })}
           </div>
+          </div>
+        </div>
 
-          {lastRun && logOpen && (
+        {lastRun && logOpen && (
             <div
               className="absolute inset-x-0 bottom-0 z-20 max-h-[45%] overflow-y-auto border-t border-border-strong bg-surface/95 backdrop-blur"
               onClick={(e) => e.stopPropagation()}
@@ -1014,10 +1531,145 @@ export default function WorkflowCanvasPage() {
               </ul>
             </div>
           )}
+
+        {/* zoom + canvas controls — pinned to the canvas viewport; hidden on
+            mobile while a bottom sheet is open so they don't overlap it */}
+        <div
+          className={cn(
+            "absolute bottom-3 left-3 z-30 flex items-center gap-0.5 rounded-lg border border-border bg-surface/95 p-1 shadow-lg backdrop-blur",
+            mobileSheet && "max-lg:hidden",
+          )}
+        >
+          <button onClick={() => applyZoom(zoomRef.current - 0.15)} title="Zoom out" className="grid h-7 w-7 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg">
+            <ZoomOut className="h-4 w-4" />
+          </button>
+          <button onClick={() => applyZoom(1)} title="Reset to 100%" className="nums min-w-[42px] rounded px-1 py-1 text-center text-[11px] font-medium text-fg-muted hover:bg-surface-2 hover:text-fg">
+            {Math.round(zoom * 100)}%
+          </button>
+          <button onClick={() => applyZoom(zoomRef.current + 0.15)} title="Zoom in" className="grid h-7 w-7 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg">
+            <ZoomIn className="h-4 w-4" />
+          </button>
+          <div className="mx-0.5 h-4 w-px bg-border" />
+          <button onClick={addNote} title="Add note (N)" className="grid h-7 w-7 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg">
+            <StickyNote className="h-4 w-4" />
+          </button>
+          <button onClick={fitView} title="Fit to view" className="grid h-7 w-7 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg">
+            <Maximize className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setShowMinimap((v) => !v)}
+            title="Toggle minimap"
+            className={cn("grid h-7 w-7 place-items-center rounded hover:bg-surface-2 hover:text-fg", showMinimap ? "text-accent" : "text-fg-muted")}
+          >
+            <MapIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setSettingsOpen((v) => !v)}
+            title="Canvas settings"
+            className={cn("grid h-7 w-7 place-items-center rounded hover:bg-surface-2 hover:text-fg", settingsOpen ? "text-accent" : "text-fg-muted")}
+          >
+            <Settings2 className="h-4 w-4" />
+          </button>
+
+          {settingsOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-56 rounded-lg border border-border-strong bg-surface p-2 shadow-xl">
+              <p className="label-caps px-1.5 pb-1.5">Canvas settings</p>
+
+              <button
+                onClick={() => setCanvasOpts((o) => ({ ...o, snap: !o.snap }))}
+                className="flex w-full items-center justify-between rounded-md px-1.5 py-1.5 text-[12px] text-fg hover:bg-surface-2"
+              >
+                <span className="flex items-center gap-2"><LayoutGrid className="h-3.5 w-3.5 text-fg-muted" /> Snap to grid</span>
+                <span className={cn("h-3.5 w-3.5 rounded border", canvasOpts.snap ? "border-accent bg-accent" : "border-border-strong")}>
+                  {canvasOpts.snap && <Check className="h-3 w-3 text-accent-fg" />}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setCanvasOpts((o) => ({ ...o, dashed: !o.dashed }))}
+                className="flex w-full items-center justify-between rounded-md px-1.5 py-1.5 text-[12px] text-fg hover:bg-surface-2"
+              >
+                <span className="flex items-center gap-2"><Spline className="h-3.5 w-3.5 text-fg-muted" /> Dashed connections</span>
+                <span className={cn("h-3.5 w-3.5 rounded border", canvasOpts.dashed ? "border-accent bg-accent" : "border-border-strong")}>
+                  {canvasOpts.dashed && <Check className="h-3 w-3 text-accent-fg" />}
+                </span>
+              </button>
+
+              <div className="mt-1 border-t border-border px-1.5 pb-1 pt-2">
+                <p className="mb-1.5 text-[11px] text-fg-muted">Grid</p>
+                <div className="flex gap-1">
+                  {(["dots", "lines", "none"] as const).map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setCanvasOpts((o) => ({ ...o, grid: g }))}
+                      className={cn(
+                        "flex-1 rounded-md border px-1.5 py-1 text-[11px] capitalize transition-colors",
+                        canvasOpts.grid === g ? "border-accent bg-accent/10 text-fg" : "border-border text-fg-muted hover:text-fg",
+                      )}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* inspector */}
-        <aside className="w-[300px] shrink-0 overflow-y-auto border-l border-border bg-surface p-4">
+        {/* minimap — pinned to the canvas viewport; tap to recentre; hidden on
+            mobile while a bottom sheet is open */}
+        {showMinimap && wf.nodes.length > 0 && (
+          <div
+            className={cn(
+              "absolute bottom-3 right-3 z-30 cursor-pointer overflow-hidden rounded-lg border border-border bg-[#0a0a0a]/95 shadow-lg backdrop-blur",
+              mobileSheet && "max-lg:hidden",
+            )}
+            style={{ width: mm.w, height: mm.h }}
+            onClick={(e) => {
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              const el = scrollRef.current;
+              if (!el) return;
+              el.scrollLeft = ((e.clientX - r.left) / mm.s) * zoom - el.clientWidth / 2;
+              el.scrollTop = ((e.clientY - r.top) / mm.s) * zoom - el.clientHeight / 2;
+              syncView();
+            }}
+          >
+            {wf.nodes.map((n) => (
+              <span
+                key={n.id}
+                className={cn("absolute rounded-[1px]", selected === n.id ? "bg-accent" : "bg-[rgba(255,255,255,0.4)]")}
+                style={{ left: n.x * mm.s, top: n.y * mm.s, width: NODE_W * mm.s, height: NODE_H * mm.s }}
+              />
+            ))}
+            <span
+              className="absolute border border-accent bg-accent/10"
+              style={{ left: (view.sl / zoom) * mm.s, top: (view.st / zoom) * mm.s, width: (view.vw / zoom) * mm.s, height: (view.vh / zoom) * mm.s }}
+            />
+          </div>
+        )}
+        </div>
+
+        {/* inspector — permanent right rail on desktop, slide-up sheet on mobile */}
+        <aside
+          className={cn(
+            "flex flex-col bg-surface",
+            "lg:w-[300px] lg:shrink-0 lg:border-l lg:border-border",
+            "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[72vh] max-lg:rounded-t-2xl max-lg:border max-lg:border-border max-lg:shadow-2xl max-lg:transition-transform max-lg:duration-300",
+            mobileSheet === "inspector" ? "max-lg:translate-y-0" : "max-lg:translate-y-[110%]",
+          )}
+        >
+          <div className="mx-auto mb-1 mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong lg:hidden" />
+          <div className="flex items-center justify-between border-b border-border px-3 py-2 lg:hidden">
+            <span className="text-[13px] font-medium text-fg">Configure</span>
+            <button
+              onClick={() => setMobileSheet(null)}
+              title="Close"
+              className="grid h-7 w-7 place-items-center rounded text-fg-muted hover:bg-surface-2 hover:text-fg"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {selNode ? (
             <>
               <div className="mb-3 flex items-center justify-between">
@@ -1099,7 +1751,30 @@ export default function WorkflowCanvasPage() {
               </div>
             </div>
           )}
+          </div>
         </aside>
+      </div>
+
+      {/* mobile tool bar — Canva/Picsart-style quick access to the rails */}
+      <div className="flex shrink-0 items-center justify-around border-t border-border bg-surface px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden">
+        <button
+          onClick={() => setMobileSheet((s) => (s === "palette" ? null : "palette"))}
+          className={cn(
+            "flex flex-1 flex-col items-center gap-0.5 rounded-md py-1 text-[10px] font-medium transition-colors",
+            mobileSheet === "palette" ? "text-accent" : "text-fg-muted hover:text-fg",
+          )}
+        >
+          <LayoutGrid className="h-5 w-5" /> Nodes
+        </button>
+        <button
+          onClick={() => setMobileSheet((s) => (s === "inspector" ? null : "inspector"))}
+          className={cn(
+            "flex flex-1 flex-col items-center gap-0.5 rounded-md py-1 text-[10px] font-medium transition-colors",
+            mobileSheet === "inspector" ? "text-accent" : "text-fg-muted hover:text-fg",
+          )}
+        >
+          <SlidersHorizontal className="h-5 w-5" /> Edit
+        </button>
       </div>
 
       {ndvNode &&
@@ -1132,7 +1807,7 @@ export default function WorkflowCanvasPage() {
           }}
         >
           <div
-            className="flex h-full w-[380px] flex-col border-l border-border-strong bg-surface shadow-2xl"
+            className="flex h-full w-full max-w-[380px] flex-col border-l border-border-strong bg-surface shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
@@ -1275,6 +1950,39 @@ function PaletteNodeRow({ t, onClick }: { t: NodeType; onClick: () => void }) {
         <span className="mt-0.5 block text-[11px] leading-snug text-fg-subtle">{t.description}</span>
       </span>
       {hasActions && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-fg-subtle" />}
+    </button>
+  );
+}
+
+// Small icon button used in the on-focus node action toolbar.
+function NodeTBtn({
+  children,
+  onClick,
+  title,
+  danger,
+  active,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  title: string;
+  danger?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={cn(
+        "grid h-7 w-7 place-items-center rounded transition-colors",
+        danger
+          ? "text-fg-muted hover:bg-err/10 hover:text-err"
+          : active
+            ? "bg-surface-3 text-fg"
+            : "text-fg-muted hover:bg-surface-2 hover:text-fg",
+      )}
+    >
+      {children}
     </button>
   );
 }
