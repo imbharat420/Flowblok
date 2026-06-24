@@ -14,7 +14,7 @@ import { ne } from "drizzle-orm";
 import { cronMatches } from "./cron";
 import { executeWorkflow } from "./engine";
 import { workflowsRepository } from "../workflows.repository";
-import { getDb } from "@/server/db/client";
+import { getDb, isConnectionError, resetDb } from "@/server/db/client";
 import { schedulerState } from "@/server/db/schema";
 
 const DEFAULT_CRON = "0 9 * * *"; // 09:00 daily, matching the Schedule node default
@@ -61,8 +61,20 @@ async function tick(): Promise<void> {
   try {
     workflows = await workflowsRepository.findAll();
   } catch (err) {
-    console.error("[scheduler] failed to load workflows:", err);
-    return;
+    // A dropped DB connection leaves a dead memoized handle. Rebuild it and try
+    // once more this tick; if it still fails, the next tick retries fresh.
+    if (isConnectionError(err)) {
+      await resetDb().catch(() => {});
+      try {
+        workflows = await workflowsRepository.findAll();
+      } catch (retryErr) {
+        console.warn("[scheduler] DB unavailable, skipping tick:", (retryErr as Error).message);
+        return;
+      }
+    } else {
+      console.error("[scheduler] failed to load workflows:", err);
+      return;
+    }
   }
 
   for (const wf of workflows) {

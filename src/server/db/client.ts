@@ -25,7 +25,16 @@ async function createDb() {
       import("drizzle-orm/postgres-js"),
       import("postgres"),
     ]);
-    const client = postgresMod.default(url, { max: 10, prepare: false });
+    const client = postgresMod.default(url, {
+      max: 10,
+      prepare: false,
+      // Resilience for flaky links: recycle idle/old sockets so we never reuse a
+      // half-dead connection, and bound how long a connect attempt can hang.
+      idle_timeout: 20, // seconds — close idle connections
+      max_lifetime: 60 * 30, // seconds — recycle a connection after 30 min
+      connect_timeout: 15, // seconds — fail fast instead of hanging
+      onnotice: () => {}, // silence NOTICE chatter
+    });
     const db = drizzle(client, { schema });
     return { db, driver: "postgres" as const, raw: client };
   }
@@ -59,6 +68,44 @@ export async function getDb(): Promise<AppDb> {
   await runMigrations();
   const { db } = await getHandle();
   return db as unknown as AppDb;
+}
+
+// Connection-level errors (socket dropped, reset, timed out) — as opposed to
+// SQL/logic errors. After one of these the memoized handle is dead and must be
+// rebuilt, so callers should reset() and retry rather than reusing it.
+const CONN_ERR_CODES = new Set([
+  "ECONNABORTED",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EPIPE",
+  "ETIMEDOUT",
+  "CONNECTION_CLOSED",
+  "CONNECTION_ENDED",
+  "CONNECT_TIMEOUT",
+  "CONNECTION_DESTROYED",
+]);
+
+export function isConnectionError(err: unknown): boolean {
+  const e = err as { code?: string; cause?: { code?: string }; message?: string } | undefined;
+  const code = e?.code ?? e?.cause?.code;
+  if (code && CONN_ERR_CODES.has(code)) return true;
+  return /ECONNABORTED|ECONNRESET|ECONNREFUSED|EPIPE|ETIMEDOUT|terminat|closed the connection/i.test(e?.message ?? "");
+}
+
+/** Drop the memoized connection (and end the underlying client) so the next
+ *  getDb() builds a fresh one. Call after a connection-level failure. */
+export async function resetDb(): Promise<void> {
+  const pending = g.__flowblokDb;
+  g.__flowblokDb = undefined;
+  if (!pending) return;
+  try {
+    const handle = await pending;
+    if (handle.driver === "postgres") {
+      await (handle.raw as { end?: (o?: { timeout?: number }) => Promise<void> }).end?.({ timeout: 5 });
+    }
+  } catch {
+    /* the connection was already broken — nothing to clean up */
+  }
 }
 
 /** Apply pending migrations once per process. Idempotent. */

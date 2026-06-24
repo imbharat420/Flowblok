@@ -103,11 +103,32 @@ const codeHandler: NodeHandler = async ({ items, node, log }) => {
   // surfaces to the engine's try/catch instead of becoming an unhandled
   // rejection after the node was already logged.
   const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as FunctionConstructor;
-  const fn = new AsyncFunction("items", "$json", `"use strict";\n${code}`);
-  const result = await fn(
-    items.map((i) => i.json),
-    items[0]?.json ?? {},
-  );
+
+  // n8n-imported Code nodes (marked with config._n8n) follow n8n's convention
+  // where `items` are { json } wrappers accessed as `items[i].json.field`, and
+  // `$json` / `$input` are available. Native Code nodes keep our simpler
+  // convention where `items` is the array of plain json objects.
+  const isN8n = !!(node.config && (node.config as Record<string, unknown>)._n8n);
+
+  let result: unknown;
+  if (isN8n) {
+    const wrapped = items.map((i) => ({ json: i.json }));
+    const $input = {
+      all: () => wrapped,
+      first: () => wrapped[0],
+      last: () => wrapped[wrapped.length - 1],
+      item: wrapped[0],
+    };
+    const fn = new AsyncFunction("items", "$json", "$input", `"use strict";\n${code}`);
+    result = await fn(wrapped, wrapped[0]?.json ?? {}, $input);
+  } else {
+    const fn = new AsyncFunction("items", "$json", `"use strict";\n${code}`);
+    result = await fn(
+      items.map((i) => i.json),
+      items[0]?.json ?? {},
+    );
+  }
+
   const out = toItems(result);
   log(`returned ${out.length} item(s)`);
   return { items: out };
